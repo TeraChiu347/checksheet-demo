@@ -139,6 +139,8 @@
     }
     button.pick:hover { border-color: var(--gold); }
     button.pick.on { background: var(--g); border-color: var(--g); color: #fff; }
+    .src-box { background: var(--g-soft); border-radius: 10px; padding: 12px 14px; margin-top: 14px; }
+    .src-box label.f { margin-top: 0; }
     .hidden { display: none !important; }
     .modal-bg {
       position: fixed; inset: 0; background: rgba(20, 30, 25, .45); display: flex;
@@ -259,7 +261,12 @@
             <div class="hint">項目可寫欄位標題或顯示名稱。</div>
           </div>
         </div>
-        <label class="f">上傳 CSV 檔</label>
+        <div class="src-box">
+          <label class="f">直接讀取這份試算表裡的工作表</label>
+          <div class="chips" id="srcSheets"><span class="muted">讀取中…</span></div>
+          <div class="hint">例如每月把各批鐘點貼進「彙整」（項目、姓名、時數三欄），點「彙整」就能直接檢查與匯入，不用再做樞紐分析。</div>
+        </div>
+        <label class="f">或上傳 CSV 檔</label>
         <input type="file" id="importFile" accept=".csv,.txt,text/csv">
         <label class="f">或貼上資料</label>
         <textarea id="importText" rows="6" placeholder="從 Excel 複製後直接貼上"></textarea>
@@ -471,6 +478,7 @@
       });
       if (name === 'logs' && !logs) loadLogs();
       if (name === 'teachers') loadTeachers();
+      if (name === 'import' && !srcLoaded) loadSourceSheets();
     }
 
     /* ───────── 載入 ───────── */
@@ -819,6 +827,38 @@
       $('fmtLong').textContent = '項目,姓名,時數\n' + heads[0] + ',王小明,1\n' + heads[0] + ',王小明,2\n' + (heads[1] || heads[0]) + ',李大華,1';
     }
 
+    /* 直接讀取試算表裡的工作表（不用原生下拉選單，避免在 Google 網頁框架裡點錯位） */
+    var srcLoaded = false;
+    function loadSourceSheets() {
+      srcLoaded = true;
+      call('listSourceSheets').then(function (names) {
+        if (!names.length) { $('srcSheets').innerHTML = '<span class="muted">沒有可讀取的工作表</span>'; return; }
+        names.sort(function (a, b) { return (b === '彙整') - (a === '彙整'); });
+        $('srcSheets').innerHTML = names.map(function (n) {
+          return '<button type="button" class="chip" data-sheet="' + esc(n) + '">' + esc(n) + '</button>';
+        }).join('');
+      }).catch(function (e) { srcLoaded = false; $('srcSheets').innerHTML = '<span class="muted">' + esc(errMsg(e)) + '</span>'; });
+    }
+    $('srcSheets').onclick = function (e) {
+      var b = e.target.closest('button[data-sheet]');
+      if (!b) return;
+      var name = b.getAttribute('data-sheet');
+      Array.prototype.forEach.call($('srcSheets').children, function (c) { c.classList.toggle('on', c === b); });
+      toast('讀取「' + name + '」中…');
+      call('readSheetRows', name).then(function (rows) {
+        if (rows.length < 2) throw new Error('「' + name + '」沒有資料');
+        pendingImport = rows;
+        return call('previewImport', rows).then(function (sum) {
+          sum.source = '工作表「' + name + '」，共 ' + (rows.length - 1) + ' 列';
+          renderImportResult(sum);
+          $('importResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }).catch(function (e) {
+        $('importResult').classList.remove('hidden');
+        $('importResult').innerHTML = '<div class="banner err" style="margin:0;white-space:pre-line">' + esc(errMsg(e)) + '</div>';
+      });
+    };
+
     $('importCheckBtn').onclick = function () {
       var rows = parseTable($('importText').value);
       if (rows.length < 2) { toast('請先上傳檔案或貼上資料（第一列是標題）', true); return; }
@@ -835,7 +875,7 @@
     function renderImportResult(sum) {
       var box = $('importResult');
       box.classList.remove('hidden');
-      var h = '<h2>檢查結果 <small>' + esc(sum.format) + '</small></h2>';
+      var h = '<h2>檢查結果 <small>' + esc(sum.format) + (sum.source ? '・' + esc(sum.source) : '') + '</small></h2>';
       h += '<div class="stats">' + stat(sum.count, '位老師有時數') + stat(sum.noEmail.length, '位找不到信箱', sum.noEmail.length ? 'gold' : '') +
         S.items.map(function (it, i) { return stat(sum.totals[i], esc(itemName(it)) + ' 合計'); }).join('') + '</div>';
 
@@ -856,7 +896,7 @@
 
       h += sum.count
         ? '<div class="row"><button class="btn gold" id="importGoBtn">確認匯入 ' + sum.count + ' 位老師</button>' +
-          '<span class="muted">會取代目前的「當月總計」，舊的會自動備份成新工作表（保留最近 3 份）。</span></div>'
+          '<span class="muted">會取代目前的「當月總計」（原本表上的其他欄位與公式不會保留），舊的會自動備份成新工作表（保留最近 3 份）。</span></div>'
         : '<div class="banner err">沒有可匯入的資料。</div>';
       box.innerHTML = h;
       if (sum.count) $('importGoBtn').onclick = doImport;

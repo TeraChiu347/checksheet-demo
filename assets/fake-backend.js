@@ -177,11 +177,11 @@
       format = '一筆一列（項目／姓名／時數）';
       for (var i = 1; i < rows.length; i++) {
         var name = normName(rows[i][nameCol]), lab = trim(rows[i][itemCol]), raw = trim(rows[i][hoursCol]);
-        if (!name && !lab && !raw) continue;
-        if (!name) { bad.push('第 ' + (i + 1) + ' 列沒有姓名'); continue; }
+        if (raw === '') continue;
+        if (!name) { bad.push('第 ' + (i + 1) + ' 列有時數但沒有姓名'); continue; }
         var it = itemOf(lab);
         if (!it) { unknown[lab || '（空白）'] = (unknown[lab || '（空白）'] || 0) + 1; continue; }
-        if (raw === '' || isNaN(Number(raw))) { bad.push('第 ' + (i + 1) + ' 列時數不是數字：' + raw); continue; }
+        if (isNaN(Number(raw))) { bad.push('第 ' + (i + 1) + ' 列時數不是數字：' + raw); continue; }
         t(name).hours[it.header] += Number(raw);
       }
     } else {
@@ -315,6 +315,21 @@
       S.teachers = S.teachers.filter(function (x) { return x.name !== name; });
       act('刪除教師信箱', name);
       return true;
+    },
+    // 示範用的「彙整」工作表：每月分批貼上的鐘點，一筆一列
+    listSourceSheets: function () { return ['彙整']; },
+    readSheetRows: function (name) {
+      if (name !== '彙整') throw new Error('找不到工作表「' + name + '」');
+      var rows = [['項目', '姓名', '時數']];
+      NAMES.forEach(function (n, i) {
+        rows.push(['2.兼課鐘點', n, 4 + (i * 2) % 7]);
+        if (i % 2) rows.push(['1.代課鐘點', n, 1 + i % 3]);
+        if (i % 3 === 0) rows.push(['1.代課鐘點', n, 2]);
+        if (i % 4 === 1) rows.push(['4.輔導課鐘點', n, 6]);
+        rows.push(['8.教師名冊', n, '']);
+      });
+      rows.push(['1.代課鐘點', '', '']);
+      return rows;
     },
     previewImport: function (rows) {
       var p = parseImport(rows);
