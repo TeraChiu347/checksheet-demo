@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#24463a">
+  <meta name="robots" content="noindex">
+  <title>老師查詢頁｜鐘點核對單試用版</title>
+  <style>
+    :root {
+      --main: #1f5f8b;
+      --main-dark: #17486a;
+      --bg: #f3f6f9;
+      --card: #ffffff;
+      --text: #22303c;
+      --muted: #6b7a88;
+      --line: #d9e1e8;
+      --error: #b3261e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px 16px 48px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    .wrap { max-width: 560px; margin: 0 auto; }
+    h1 { font-size: 20px; margin: 0 0 4px; text-align: center; color: var(--main-dark); }
+    .period { text-align: center; color: var(--muted); margin-bottom: 20px; min-height: 1.6em; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    label { display: block; font-weight: 600; margin: 12px 0 6px; }
+    label:first-child { margin-top: 0; }
+    input {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-family: inherit;
+    }
+    input:focus { outline: 2px solid var(--main); outline-offset: 1px; }
+    .hint { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    button {
+      width: 100%;
+      margin-top: 18px;
+      padding: 13px;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: inherit;
+      border: 0;
+      border-radius: 8px;
+      background: var(--main);
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover { background: var(--main-dark); }
+    button:disabled { opacity: .6; cursor: default; }
+    button.secondary { background: #fff; color: var(--main); border: 1px solid var(--main); }
+    .error { color: var(--error); margin-top: 12px; min-height: 1.6em; }
+    .teacher { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+    .teacher-sub { font-size: 14px; color: var(--muted); margin-bottom: 14px; }
+    .card.result { padding: 0; overflow: hidden; }
+    .result-head { background: var(--main); color: #fff; padding: 14px 20px; }
+    .result-head .t { font-size: 17px; font-weight: 700; }
+    .result-head .p { font-size: 13px; opacity: .9; }
+    .result-body { padding: 18px 16px 20px; }
+    @media (max-width: 380px) {
+      .result-body { padding: 16px 10px; }
+      .result-body th { font-size: 12px !important; }
+      .result-body td span:first-child { font-size: 19px !important; }
+    }
+    .notes { margin: 0; padding-left: 20px; font-size: 14px; }
+    .notes li { margin-bottom: 8px; white-space: pre-wrap; }
+    .send-date { text-align: right; font-size: 13px; color: var(--muted); margin-top: 8px; }
+    .hidden { display: none; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      button { display: none; }
+      .card { border: 0; padding: 8px 0; }
+    }
+  
+  .demo-bar { background: #f8ebd3; color: #5b4310; border-bottom: 1px solid #e3cf9f; font-size: 14px; line-height: 1.6;
+    padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; }
+  .demo-bar .in { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+  .demo-bar b { color: #3d2c06; }
+  .demo-bar .home { color: #24463a; font-weight: 800; text-decoration: none; white-space: nowrap; }
+  .demo-bar .tag { background: #c8a96b; color: #17372d; font-weight: 700; font-size: 12px; padding: 2px 10px; border-radius: 999px; letter-spacing: .05em; }
+  .demo-bar .msg { flex: 1 1 320px; min-width: 0; }
+  .demo-bar nav.links { display: flex; gap: 8px; flex-wrap: wrap; }
+  .demo-bar nav.links a { color: #24463a; font-weight: 600; text-decoration: none; border: 1px solid #c8a96b; background: #fffdf8; padding: 4px 12px; border-radius: 999px; white-space: nowrap; }
+  .demo-bar nav.links a:hover { background: #fff6e4; }
+  .demo-bar nav.links a.on { background: #24463a; color: #fff; border-color: #24463a; }
+  .demo-bar a:focus-visible { outline: 2px solid #24463a; outline-offset: 2px; }
+    body { padding-top: 0 !important; }
+    .wrap { margin-top: 24px !important; }
+  </style>
+</head>
+<body>
+  <div class="demo-bar"><div class="in">
+  <a class="home" href="./">← 阿珀・鐘點核對單</a>
+  <span class="tag">試用版</span>
+  <span class="msg">試用帳號：姓名 <b>王大明</b>、信箱 <b>teacher01@example.com</b></span>
+  <nav class="links" aria-label="試用頁面">
+    <a href="demo.html">管理後台</a>
+    <a href="mail.html">老師收到的信</a>
+    <a href="teacher.html" class="on" aria-current="page">老師查詢頁</a>
+  </nav></div></div>
+  <div class="wrap">
+    <div id="pageHead">
+      <h1 id="title">鐘點核對單查詢</h1>
+      <div class="period" id="period"></div>
+    </div>
+
+    <div id="loginView" class="card">
+      <form id="loginForm">
+        <label for="name">姓名</label>
+        <input id="name" type="text" autocomplete="name" required>
+
+        <label for="email">電子信箱</label>
+        <input id="email" type="email" autocomplete="email" inputmode="email" required>
+        <div class="hint">請輸入收到核對單通知的那個信箱。</div>
+
+        <button id="submitBtn" type="submit">查詢</button>
+        <div class="error" id="error" role="alert"></div>
+      </form>
+    </div>
+
+    <div id="resultView" class="hidden">
+      <div class="card result">
+        <div class="result-head">
+          <div class="t" id="resultTitle"></div>
+          <div class="p" id="resultPeriod"></div>
+        </div>
+        <div class="result-body">
+          <div class="teacher" id="teacher"></div>
+          <div class="teacher-sub">本期鐘點時數如下：</div>
+          <div id="hoursTable"></div>
+        </div>
+      </div>
+
+      <div class="card hidden" id="notesCard">
+        <ul class="notes" id="notes"></ul>
+        <div class="send-date" id="sendDate"></div>
+      </div>
+
+      <button class="secondary" id="backBtn" type="button">返回</button>
+    </div>
+  </div>
+
+  <script src="assets/fake-backend.js"></script>
+  <script>
+    var $ = function (id) { return document.getElementById(id); };
+    var contact = '教學組';
+
+    function setHeader(info) {
+      if (info.contact) contact = info.contact;
+      if (info.title) $('title').textContent = info.title;
+      $('period').textContent = info.period || '';
+    }
+
+    function setLoading(loading) {
+      $('submitBtn').disabled = loading;
+      $('submitBtn').textContent = loading ? '查詢中…' : '查詢';
+    }
+
+    function showResult(res) {
+      setLoading(false);
+      if (!res.ok) {
+        $('error').textContent = res.msg;
+        return;
+      }
+
+      setHeader(res);
+      $('teacher').textContent = res.name + ' 老師';
+
+      $('resultTitle').textContent = res.title || '鐘點核對單';
+      $('resultPeriod').textContent = res.period ? '結算期間：' + res.period : '';
+      // 表格由伺服器端產生（跟 Email 同一份），內容只有數字與固定標題
+      $('hoursTable').innerHTML = res.tableHtml;
+
+      var notes = $('notes');
+      notes.textContent = '';
+      res.notes.forEach(function (note) {
+        var li = document.createElement('li');
+        li.textContent = note;
+        notes.appendChild(li);
+      });
+      $('sendDate').textContent = res.sendDate ? res.sendDate + ' 寄發' : '';
+      $('notesCard').classList.toggle('hidden', !res.notes.length && !res.sendDate);
+
+      $('pageHead').classList.add('hidden');
+      $('loginView').classList.add('hidden');
+      $('resultView').classList.remove('hidden');
+      window.scrollTo(0, 0);
+    }
+
+    $('loginForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      $('error').textContent = '';
+      setLoading(true);
+      google.script.run
+        .withSuccessHandler(showResult)
+        .withFailureHandler(function (err) {
+          setLoading(false);
+          $('error').textContent = '系統發生錯誤，請稍後再試或洽' + contact + '。（' + err.message + '）';
+        })
+        .queryHours($('name').value, $('email').value);
+    });
+
+    $('backBtn').addEventListener('click', function () {
+      $('email').value = '';
+      $('resultView').classList.add('hidden');
+      $('pageHead').classList.remove('hidden');
+      $('loginView').classList.remove('hidden');
+    });
+
+    google.script.run.withSuccessHandler(setHeader).getPageInfo();
+  </script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#24463a">
+  <meta name="robots" content="noindex">
+  <title>老師收到的信｜鐘點核對單試用版</title>
+  <style>
+    body { margin: 0; background: #f3f6f9; font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; }
+    
+  .demo-bar { background: #f8ebd3; color: #5b4310; border-bottom: 1px solid #e3cf9f; font-size: 14px; line-height: 1.6;
+    padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; }
+  .demo-bar .in { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+  .demo-bar b { color: #3d2c06; }
+  .demo-bar .home { color: #24463a; font-weight: 800; text-decoration: none; white-space: nowrap; }
+  .demo-bar .tag { background: #c8a96b; color: #17372d; font-weight: 700; font-size: 12px; padding: 2px 10px; border-radius: 999px; letter-spacing: .05em; }
+  .demo-bar .msg { flex: 1 1 320px; min-width: 0; }
+  .demo-bar nav.links { display: flex; gap: 8px; flex-wrap: wrap; }
+  .demo-bar nav.links a { color: #24463a; font-weight: 600; text-decoration: none; border: 1px solid #c8a96b; background: #fffdf8; padding: 4px 12px; border-radius: 999px; white-space: nowrap; }
+  .demo-bar nav.links a:hover { background: #fff6e4; }
+  .demo-bar nav.links a.on { background: #24463a; color: #fff; border-color: #24463a; }
+  .demo-bar a:focus-visible { outline: 2px solid #24463a; outline-offset: 2px; }
+    .inbox { max-width: 600px; margin: 20px auto 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+      color: #4a5866; font-size: 14px; line-height: 1.8; }
+    .inbox b { color: #22303c; }
+  </style>
+</head>
+<body>
+  <div class="demo-bar"><div class="in">
+  <a class="home" href="./">← 阿珀・鐘點核對單</a>
+  <span class="tag">試用版</span>
+  <span class="msg">這是寄到老師信箱的樣子，電腦和手機的 Gmail、Outlook 都會這樣顯示。</span>
+  <nav class="links" aria-label="試用頁面">
+    <a href="demo.html">管理後台</a>
+    <a href="mail.html" class="on" aria-current="page">老師收到的信</a>
+    <a href="teacher.html">老師查詢頁</a>
+  </nav></div></div>
+  <div class="inbox"><b>寄件人：</b>○○國中教務處教學組<br><b>主旨：</b>115年9月份兼代課暨輔導課鐘點核對單－王大明 老師</div>
+  <div id="mail"></div>
+  <script src="assets/fake-backend.js"></script>
+  <script>document.getElementById('mail').innerHTML = window.DEMO.mailHtml('王大明');</script>
+</body>
+</html>

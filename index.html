@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#24463a">
+  <meta name="description" content="兼代課暨輔導課鐘點核對單，一鍵寄給每位老師。用學校自己的 Google 試算表運作，老師也能上網查詢。阿珀開發 APO。">
+  <meta property="og:title" content="鐘點核對單｜阿珀開發">
+  <meta property="og:description" content="兼代課鐘點核對單一鍵寄給每位老師，寄送前可預覽，誰寄失敗一目了然。立即線上試用。">
+  <meta property="og:image" content="https://checksheet.apodevelop.com/img/mail.jpg">
+  <meta property="og:url" content="https://checksheet.apodevelop.com/">
+  <title>鐘點核對單｜阿珀開發</title>
+  <style>
+    /* 版面：沿用阿珀官網（米白底、綠字、金色點綴）；功能區圖文左右交錯 */
+    :root {
+      --green: #24463a;
+      --green-dark: #17372d;
+      --gold: #c8a96b;
+      --gold-ink: #8b6b34;
+      --cream: #f7f1e7;
+      --paper: #fffdf8;
+      --border: #e7ded1;
+      --ink: #2e312f;
+      --muted: #7a817d;
+      --radius: 20px;
+      --shadow: 0 16px 45px rgba(34, 52, 41, .07);
+      --sans: -apple-system, BlinkMacSystemFont, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      --num: Georgia, "Times New Roman", serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .btn { transition: none !important; } }
+    body { margin: 0; min-width: 320px; overflow-x: hidden; background: var(--cream); color: var(--ink); font-family: var(--sans); line-height: 1.75; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; }
+    img { max-width: 100%; height: auto; display: block; }
+    .container { width: min(1120px, calc(100% - 32px)); margin-inline: auto; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 9px; color: var(--green); font-size: 12px; font-weight: 800; letter-spacing: .17em; }
+    .eyebrow::before { content: ""; height: 1px; width: 20px; background: var(--gold); }
+
+    /* 導覽列 */
+    .topbar { border-bottom: 1px solid var(--border); background: rgba(255, 253, 248, .9); position: sticky; top: 0; z-index: 5; backdrop-filter: blur(6px); }
+    .nav { display: flex; justify-content: space-between; align-items: center; min-height: 68px; gap: 12px; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; color: var(--green); font-weight: 800; white-space: nowrap; }
+    .brand img { height: 36px; width: auto; }
+    .brand span { padding-left: 12px; border-left: 1px solid var(--border); font-size: 15px; }
+    .nav-links { display: flex; align-items: center; gap: 24px; }
+    .nav-links a { text-decoration: none; font-size: 13px; font-weight: 700; }
+    .nav-links a:hover { color: var(--gold-ink); }
+    .nav-links .nav-cta { border: 1px solid var(--green); border-radius: 100px; padding: 7px 16px; color: var(--green); }
+    .nav-links .nav-cta:hover { background: rgba(36, 70, 58, .06); color: var(--green); }
+
+    /* 按鈕 */
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+    .btn { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 52px; padding: 12px 25px; border: 1px solid transparent; border-radius: 11px; text-decoration: none; font-size: 15px; font-weight: 800; transition: transform .2s ease, background .2s ease; }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+    .btn-gold { background: var(--gold); color: var(--green-dark); box-shadow: 0 7px 20px rgba(94, 72, 30, .13); }
+    .btn-gold:hover { background: #d6b77b; }
+    .btn-outline { border-color: var(--green); color: var(--green); background: transparent; }
+    .btn-outline:hover { background: rgba(36, 70, 58, .06); }
+    .microcopy { color: var(--muted); font-size: 13px; margin: 14px 0 0; }
+
+    /* 首屏 */
+    .hero { padding: 76px 0 88px; }
+    .hero-layout { display: grid; grid-template-columns: 1.02fr .98fr; align-items: center; gap: 56px; }
+    .hero h1 { margin: 18px 0 16px; font-size: clamp(38px, 5vw, 64px); line-height: 1.22; letter-spacing: -.035em; color: var(--green); font-weight: 850; text-wrap: balance; }
+    .hero .lede { max-width: 520px; font-size: clamp(17px, 1.8vw, 20px); line-height: 1.8; font-weight: 600; margin: 0; }
+    .hero .support { color: var(--muted); font-size: 14px; margin: 12px 0 26px; }
+    .hero-art { position: relative; border: 1px solid #d5cbbb; background: #efe7d9; border-radius: 28px; padding: 26px; box-shadow: 20px 20px 0 rgba(36, 70, 58, .045); }
+    .hero-art img { border-radius: 14px; border: 1px solid #ddd3c2; box-shadow: var(--shadow); max-height: 520px; width: auto; margin-inline: auto; }
+    .art-stamp { position: absolute; right: -10px; bottom: 26px; background: var(--green); color: var(--paper); font-family: var(--num); font-size: 12px; letter-spacing: .14em; padding: 10px 16px; border-radius: 10px; transform: rotate(-3deg); }
+
+    /* 區塊 */
+    .section { padding: 84px 0; }
+    .section-paper { background: var(--paper); border-block: 1px solid var(--border); }
+    .section-head { max-width: 680px; margin: 0 auto 44px; text-align: center; }
+    .section-head h2 { color: var(--green); font-size: clamp(27px, 3vw, 37px); line-height: 1.35; letter-spacing: -.02em; margin: 12px 0 10px; text-wrap: balance; }
+    .section-head p { color: #626963; margin: 0; }
+
+    /* 每月流程 */
+    .steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
+    .step { background: var(--cream); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 20px; }
+    .step-num { font-family: var(--num); font-size: 36px; color: #bc9e65; line-height: 1; }
+    .step h3 { font-size: 17px; color: var(--green); margin: 16px 0 6px; }
+    .step p { color: #626963; margin: 0; font-size: 14px; }
+
+    /* 功能（圖文交錯） */
+    .feature { display: grid; grid-template-columns: 1fr 1fr; gap: 52px; align-items: center; }
+    .feature + .feature { margin-top: 72px; }
+    .feature:nth-child(even) .feature-shot { order: 2; }
+    .feature-shot { background: #efe7d9; border: 1px solid #ddd3c2; border-radius: 24px; padding: 18px; }
+    .feature-shot img { border-radius: 12px; border: 1px solid #ddd3c2; box-shadow: var(--shadow); width: 100%; }
+    .feature-shot.phone img { width: auto; max-height: 460px; margin-inline: auto; }
+    .feature h3 { color: var(--green); font-size: clamp(22px, 2.4vw, 28px); line-height: 1.4; margin: 10px 0 12px; letter-spacing: -.015em; }
+    .feature p { color: #555c57; margin: 0 0 14px; }
+    .checks { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+    .checks li { position: relative; padding-left: 26px; font-size: 15px; }
+    .checks li::before { content: "✓"; position: absolute; left: 0; top: 0; color: var(--gold-ink); font-weight: 800; }
+
+    /* 其他功能 */
+    .mini-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .mini { background: var(--cream); border: 1px solid var(--border); border-radius: 16px; padding: 22px; }
+    .mini h3 { font-size: 16px; color: var(--green); margin: 0 0 6px; }
+    .mini p { font-size: 14px; color: #626963; margin: 0; }
+
+    /* 常見問題 */
+    .faq-list { max-width: 820px; margin-inline: auto; border-top: 1px solid var(--border); }
+    details { border-bottom: 1px solid var(--border); }
+    summary { list-style: none; cursor: pointer; color: var(--green); font-size: 16px; font-weight: 750; padding: 20px 36px 20px 0; position: relative; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; position: absolute; right: 4px; top: 15px; font-size: 26px; color: #a58a5b; font-weight: 400; }
+    details[open] summary::after { content: "−"; }
+    .faq-answer { margin: 0 0 22px; padding-right: 32px; color: #5f6661; font-size: 15px; }
+
+    /* 結尾 */
+    .closing { text-align: center; padding: 84px 0 92px; }
+    .closing h2 { font-size: clamp(28px, 3.6vw, 42px); line-height: 1.35; color: var(--green); margin: 14px 0 12px; text-wrap: balance; }
+    .closing p { color: #676c66; margin: 0 auto 26px; max-width: 560px; }
+    .closing .actions { justify-content: center; }
+    footer { background: #eee8db; border-top: 1px solid #e1d6c5; }
+    .footer-inner { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 24px 0; font-size: 12px; color: #687169; }
+    .footer-inner p { margin: 0; }
+    .footer-inner a { text-decoration: none; color: var(--green); font-weight: 750; }
+
+    @media (max-width: 980px) {
+      .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .mini-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hero-layout, .feature { gap: 36px; }
+    }
+    @media (max-width: 760px) {
+      .nav-links > a:not(.nav-cta) { display: none; }
+      .brand img { height: 30px; }
+      .brand span { font-size: 14px; padding-left: 10px; }
+      .hero { padding: 48px 0 60px; }
+      .hero-layout, .feature { grid-template-columns: 1fr; }
+      .feature:nth-child(even) .feature-shot { order: 0; }
+      .feature + .feature { margin-top: 56px; }
+      .art-stamp { right: 8px; }
+      .section { padding: 60px 0; }
+      .steps { grid-template-columns: 1fr; }
+      .step { display: grid; grid-template-columns: 52px 1fr; column-gap: 12px; padding: 18px 20px; }
+      .step-num { grid-row: span 2; font-size: 30px; }
+      .step h3 { margin: 0 0 2px; }
+      .footer-inner { flex-direction: column; align-items: flex-start; }
+    }
+    @media (max-width: 460px) {
+      .actions { flex-direction: column; }
+      .actions .btn { width: 100%; }
+      .mini-grid { grid-template-columns: 1fr; }
+      .brand span { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <nav class="container nav" aria-label="主要導覽">
+      <a class="brand" href="https://www.apodevelop.com/">
+        <img src="https://www.apodevelop.com/assets/apo-logo.svg" alt="阿珀開發 ApoDevelop" width="101" height="36">
+        <span>鐘點核對單</span>
+      </a>
+      <div class="nav-links">
+        <a href="#how">每月流程</a>
+        <a href="#features">功能</a>
+        <a href="#faq">常見問題</a>
+        <a class="nav-cta" href="demo.html">立即試用</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero-layout">
+        <div>
+          <span class="eyebrow">阿珀開發 APO・學校行政工具</span>
+          <h1 id="hero-title">兼代課鐘點核對單<br>一鍵寄給每位老師</h1>
+          <p class="lede">貼上本期時數、預覽、寄出。老師收到熟悉的核對單版面，也能用手機上網查詢自己的時數。</p>
+          <p class="support">用學校自己的 Google 試算表運作，不用架主機、不用安裝軟體。</p>
+          <div class="actions">
+            <a class="btn btn-gold" href="demo.html">▶ 立即線上試用</a>
+            <a class="btn btn-outline" href="mail.html">看老師收到的信</a>
+          </div>
+          <p class="microcopy">試用版的學校、老師、信箱都是虛構的，按寄出不會真的寄信。</p>
+        </div>
+        <div class="hero-art">
+          <img src="img/mail.jpg" alt="老師收到的核對單 Email：標題、結算期間、兼課與代課時數表格、注意事項、線上查詢按鈕" width="680" height="640">
+          <div class="art-stamp" aria-hidden="true">EVERY MONTH · ONE CLICK</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-paper" id="how" aria-labelledby="how-title">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">HOW IT WORKS</span>
+          <h2 id="how-title">每個月五個步驟，核對單就寄完了</h2>
+          <p>第一次設定好核對項目與老師信箱，之後每月只要換資料、按寄出。</p>
+        </div>
+        <ol class="steps">
+          <li class="step"><div class="step-num">01</div><h3>匯入本期時數</h3><p>上傳 CSV，或從 Excel 直接複製貼上。</p></li>
+          <li class="step"><div class="step-num">02</div><h3>更新本期資訊</h3><p>填結算期間、寄發日期與注意事項。</p></li>
+          <li class="step"><div class="step-num">03</div><h3>預覽與測試</h3><p>看每位老師的信，先寄一封給自己。</p></li>
+          <li class="step"><div class="step-num">04</div><h3>批次寄送</h3><p>一鍵寄給所有老師，進度即時顯示。</p></li>
+          <li class="step"><div class="step-num">05</div><h3>老師線上查詢</h3><p>老師用姓名＋信箱，隨時查自己的時數。</p></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section" id="features" aria-labelledby="features-title">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">FEATURES</span>
+          <h2 id="features-title">寄之前看得到，寄之後查得到</h2>
+          <p>教學組最在意的「有沒有寄對、有沒有寄到」，都放在同一個畫面。</p>
+        </div>
+
+        <div class="features">
+          <article class="feature">
+            <div class="feature-shot"><img src="img/preview.jpg" alt="預覽視窗：顯示收件人、主旨與老師收到的核對單內容" width="1400" height="1166" loading="lazy"></div>
+            <div>
+              <span class="eyebrow">寄送前</span>
+              <h3>每位老師的信，寄之前都能先看</h3>
+              <p>按「預覽」就看到老師會收到的內容，收件人與主旨也一起列出來。確認沒問題，再寄一封測試信給自己。</p>
+              <ul class="checks">
+                <li>表格版面跟紙本核對單一樣</li>
+                <li>注意事項、寄發日期在後台就能改</li>
+                <li>測試信不會記入寄送紀錄</li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="feature">
+            <div class="feature-shot"><img src="img/progress.jpg" alt="批次寄送完成畫面：已寄出、寄送失敗的老師分別標示，失敗原因顯示在名單上" width="1400" height="1050" loading="lazy"></div>
+            <div>
+              <span class="eyebrow">寄送時</span>
+              <h3>一鍵批次寄送，誰寄失敗一目了然</h3>
+              <p>寄送進度即時顯示，可以隨時暫停。寄失敗的老師會標紅色並寫出原因，改好信箱按「重寄」就好。</p>
+              <ul class="checks">
+                <li>本期寄過的不會重複寄</li>
+                <li>每日寄信額度用完會自動停，隔天接著寄</li>
+                <li>沒登錄信箱的老師寄到代收信箱，主旨標「請轉交」</li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="feature">
+            <div class="feature-shot"><img src="img/import.jpg" alt="匯入檢查結果：老師人數、各項時數合計、格式有問題的列與找不到信箱的老師" width="1400" height="1050" loading="lazy"></div>
+            <div>
+              <span class="eyebrow">匯入資料</span>
+              <h3>從 Excel 貼上就能匯入，錯誤先提醒</h3>
+              <p>一位老師一列、或一筆時數一列都可以，系統會自動加總。匯入前先列出人數、各項合計與有問題的列，確認後才寫入。</p>
+              <ul class="checks">
+                <li>依姓名自動對照老師信箱</li>
+                <li>舊資料自動備份，保留最近 3 份</li>
+                <li>核對項目可依學校自訂</li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="feature">
+            <div class="feature-shot phone"><img src="img/teacher.jpg" alt="老師用手機查詢的結果頁：本期鐘點時數表格與注意事項" width="1000" height="1520" loading="lazy"></div>
+            <div>
+              <span class="eyebrow">老師端</span>
+              <h3>老師用手機就能查自己的時數</h3>
+              <p>信裡有「線上查詢」按鈕，老師輸入姓名和收信的信箱就能看到本期時數，不用再跑教務處問。</p>
+              <ul class="checks">
+                <li>只看得到自己的資料</li>
+                <li>輸入錯誤太多次會暫時鎖定</li>
+                <li>每一次查詢都有紀錄</li>
+              </ul>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-paper" aria-labelledby="more-title">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">ALSO INCLUDED</span>
+          <h2 id="more-title">其他貼心的小地方</h2>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h3>資料在學校自己手上</h3><p>系統裝在學校的 Google 試算表，資料不經過第三方主機。</p></div>
+          <div class="mini"><h3>多位管理員</h3><p>教學組同仁都能用自己的 Google 帳號登入後台。</p></div>
+          <div class="mini"><h3>完整紀錄</h3><p>寄送、老師查詢、後台操作，誰在什麼時候做了什麼都查得到。</p></div>
+          <div class="mini"><h3>項目自己設定</h3><p>兼課、代課、輔導課、代導師折抵……名稱、單位、合併表頭都能改。</p></div>
+          <div class="mini"><h3>原本的試算表照用</h3><p>習慣自己整理「當月總計」也可以，系統直接讀取。</p></div>
+          <div class="mini"><h3>試算表選單也能寄</h3><p>不想開後台時，在試算表上方選單也能寄測試信與批次寄送。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="faq" aria-labelledby="faq-title">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">FAQ</span>
+          <h2 id="faq-title">常見問題</h2>
+        </div>
+        <div class="faq-list">
+          <details>
+            <summary>需要架主機或安裝軟體嗎？</summary>
+            <p class="faq-answer">不用。系統裝在學校自己的 Google 試算表裡，用瀏覽器打開後台網址就能操作，電腦、平板都可以。</p>
+          </details>
+          <details>
+            <summary>老師的資料會存在哪裡？</summary>
+            <p class="faq-answer">全部存在學校自己的 Google 試算表，信也是從學校的 Google 帳號寄出，阿珀不會經手任何資料。</p>
+          </details>
+          <details>
+            <summary>一天可以寄幾封？</summary>
+            <p class="faq-answer">依 Google 的規定，一般 Gmail 帳號一天 100 封，學校的 Google Workspace 帳號一天 1,500 封。額度用完系統會自動停下來，隔天再按一次「批次寄送」就會從沒寄到的老師接著寄。</p>
+          </details>
+          <details>
+            <summary>有老師沒有登記信箱怎麼辦？</summary>
+            <p class="faq-answer">可以設定一個「代收信箱」，沒登記信箱的老師會寄到這裡，主旨標「請轉交」。也可以在後台直接幫老師補上信箱。</p>
+          </details>
+          <details>
+            <summary>我們學校的鐘點項目名稱不一樣，可以用嗎？</summary>
+            <p class="faq-answer">可以。後台「設定 → 核對項目」可以自由新增、改名、調整順序，也能設定哪些項目要合併在同一個表頭底下。</p>
+          </details>
+          <details>
+            <summary>時數資料要怎麼匯入？</summary>
+            <p class="faq-answer">上傳 CSV 檔，或從 Excel 選取儲存格直接複製貼上。支援「一位老師一列」與「一筆時數一列」兩種格式，匯入前會先檢查並列出有問題的地方。</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="closing section-paper" aria-labelledby="closing-title">
+      <div class="container">
+        <span class="eyebrow">TRY IT</span>
+        <h2 id="closing-title">先試試看，再告訴我們你的想法</h2>
+        <p>試用版可以隨意操作，不會寄出任何信。想在學校導入，或有功能建議，都歡迎與阿珀開發聯絡。</p>
+        <div class="actions">
+          <a class="btn btn-gold" href="demo.html">▶ 立即線上試用</a>
+          <a class="btn btn-outline" href="https://www.apodevelop.com/">前往阿珀官網</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <p>© 阿珀開發 APO・鐘點核對單</p>
+      <a href="#top">回到頁首 ↑</a>
+    </div>
+  </footer>
+</body>
+</html>

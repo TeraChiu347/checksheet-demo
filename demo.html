@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#24463a">
+  <meta name="robots" content="noindex">
+  <title>管理後台｜鐘點核對單試用版</title>
+  <style>
+    :root {
+      --g: #24463a;
+      --g2: #1b352c;
+      --g-soft: #e7eee9;
+      --gold: #c8a96b;
+      --gold-soft: #f6efe0;
+      --bg: #f7f4ec;
+      --card: #ffffff;
+      --line: #e3ddd0;
+      --text: #24302b;
+      --muted: #7a8079;
+      --ok: #2f7d4f;
+      --ok-soft: #e4f2e9;
+      --err: #b3261e;
+      --err-soft: #fbe9e7;
+      --warn: #8a6418;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    header {
+      background: var(--g);
+      color: #fff;
+      padding: 14px 20px 0;
+    }
+    .head-row { max-width: 1100px; margin: 0 auto; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .head-row h1 { font-size: 18px; margin: 0; }
+    .head-row .period { color: var(--gold); font-size: 14px; }
+    .head-row .me { margin-left: auto; font-size: 13px; opacity: .8; }
+    nav { max-width: 1100px; margin: 10px auto 0; display: flex; gap: 4px; overflow-x: auto; }
+    nav button {
+      background: none; border: 0; color: rgba(255,255,255,.75); padding: 10px 14px;
+      font: inherit; font-size: 15px; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap;
+    }
+    nav button.on { color: #fff; border-bottom-color: var(--gold); font-weight: 700; }
+    main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+    .tab { display: none; }
+    .tab.on { display: block; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 18px 20px; margin-bottom: 16px;
+    }
+    .card h2 { font-size: 16px; margin: 0 0 12px; color: var(--g); }
+    .card h2 small { font-weight: 400; color: var(--muted); font-size: 13px; margin-left: 6px; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .banner {
+      background: var(--gold-soft); border: 1px solid var(--gold); color: var(--warn);
+      border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; font-size: 14px;
+    }
+    .banner.err { background: var(--err-soft); border-color: #e3b4ae; color: var(--err); }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+    .stat .n { font-size: 26px; font-weight: 700; color: var(--g); font-variant-numeric: tabular-nums; }
+    .stat .l { font-size: 13px; color: var(--muted); }
+    .stat.gold .n { color: var(--warn); }
+    .stat.red .n { color: var(--err); }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .grow { flex: 1; }
+    button.btn {
+      font: inherit; font-size: 14px; font-weight: 600; padding: 9px 16px; border-radius: 8px;
+      border: 1px solid var(--g); background: var(--g); color: #fff; cursor: pointer; white-space: nowrap;
+    }
+    button.btn:hover { background: var(--g2); }
+    button.btn.ghost { background: #fff; color: var(--g); }
+    button.btn.ghost:hover { background: var(--g-soft); }
+    button.btn.gold { background: var(--gold); border-color: var(--gold); color: var(--g2); }
+    button.btn.danger { background: #fff; color: var(--err); border-color: #e3b4ae; }
+    button.btn.sm { padding: 4px 10px; font-size: 13px; font-weight: 500; }
+    button.btn:disabled { opacity: .5; cursor: default; }
+    input[type=text], input[type=email], input[type=search], textarea, select {
+      font: inherit; font-size: 15px; padding: 8px 10px; border: 1px solid var(--line);
+      border-radius: 8px; background: #fff; color: var(--text); width: 100%;
+    }
+    textarea { resize: vertical; }
+    input:focus, textarea:focus, select:focus { outline: 2px solid var(--gold); outline-offset: 0; border-color: var(--gold); }
+    label.f { display: block; font-weight: 600; font-size: 14px; margin: 12px 0 4px; }
+    label.f:first-child { margin-top: 0; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip {
+      font: inherit; font-size: 13px; padding: 4px 12px; border-radius: 999px; cursor: pointer;
+      border: 1px solid var(--line); background: #fff; color: var(--text);
+    }
+    .chip.on { background: var(--g); color: #fff; border-color: var(--g); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+    table.t { width: 100%; border-collapse: collapse; font-size: 14px; }
+    table.t th {
+      background: var(--g-soft); color: var(--g); font-weight: 600; text-align: left;
+      padding: 8px 10px; white-space: nowrap; position: sticky; top: 0;
+    }
+    table.t td { padding: 8px 10px; border-top: 1px solid var(--line); vertical-align: middle; }
+    table.t td.num, table.t th.num { text-align: center; font-variant-numeric: tabular-nums; }
+    table.t th.ih { white-space: normal; font-size: 12px; line-height: 1.35; min-width: 56px; vertical-align: bottom; }
+    table.t th.ih .grp { display: block; color: var(--muted); font-weight: 500; }
+    .err-note { font-size: 12px; color: var(--err); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    table.t td.num.z { color: #c3c7c2; }
+    table.t tr:hover td { background: #fcfaf5; }
+    .nowrap { white-space: nowrap; }
+    .pill { display: inline-block; font-size: 12px; padding: 1px 9px; border-radius: 999px; white-space: nowrap; }
+    .pill.ok { background: var(--ok-soft); color: var(--ok); }
+    .pill.err { background: var(--err-soft); color: var(--err); }
+    .pill.wait { background: var(--gold-soft); color: var(--warn); }
+    .pill.none { background: #eee; color: var(--muted); }
+    .email-cell { font-size: 13px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .email-cell.unreg { color: var(--warn); }
+    .progress { height: 10px; background: var(--g-soft); border-radius: 999px; overflow: hidden; margin: 10px 0 6px; }
+    .progress div { height: 100%; background: var(--gold); width: 0; transition: width .3s; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+    .notes-list .note-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .item-row { display: grid; grid-template-columns: 1.3fr 1.3fr .5fr 1fr auto; gap: 8px; margin-bottom: 8px; align-items: start; }
+    .item-row textarea { height: 40px; min-height: 40px; }
+    .item-head { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .list { margin: 6px 0 0; padding-left: 20px; font-size: 14px; }
+    .list li { margin-bottom: 2px; }
+    pre.code { background: var(--g-soft); padding: 10px 12px; border-radius: 8px; font-size: 13px; overflow-x: auto; margin: 6px 0; }
+    .pick-list {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; max-height: 240px; overflow-y: auto;
+      border: 1px solid var(--line); border-radius: 8px; padding: 8px;
+    }
+    button.pick {
+      font: inherit; font-size: 14px; padding: 4px 12px; border-radius: 999px; cursor: pointer;
+      border: 1px solid var(--line); background: #fff; color: var(--text);
+    }
+    button.pick:hover { border-color: var(--gold); }
+    button.pick.on { background: var(--g); border-color: var(--g); color: #fff; }
+    .hidden { display: none !important; }
+    .modal-bg {
+      position: fixed; inset: 0; background: rgba(20, 30, 25, .45); display: flex;
+      align-items: center; justify-content: center; padding: 16px; z-index: 10;
+    }
+    .modal {
+      background: #fff; border-radius: 14px; width: 100%; max-width: 520px; max-height: 92vh;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .modal.wide { max-width: 720px; }
+    .modal h3 { margin: 0; padding: 16px 20px; font-size: 16px; color: var(--g); border-bottom: 1px solid var(--line); }
+    .modal .body { padding: 16px 20px; overflow-y: auto; white-space: pre-line; }
+    .modal .body.html { white-space: normal; }
+    .modal .foot { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+    .modal iframe { width: 100%; height: 60vh; border: 1px solid var(--line); border-radius: 8px; }
+    #toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--g2); color: #fff;
+      padding: 10px 18px; border-radius: 10px; font-size: 14px; z-index: 20; max-width: 90vw;
+    }
+    #toast.err { background: var(--err); }
+    .loading { text-align: center; color: var(--muted); padding: 60px 0; }
+    @media (max-width: 640px) {
+      .grid2 { grid-template-columns: 1fr; }
+      .item-row { grid-template-columns: 1fr 1fr; }
+      .head-row .me { margin-left: 0; width: 100%; }
+    }
+  
+  .demo-bar { background: #f8ebd3; color: #5b4310; border-bottom: 1px solid #e3cf9f; font-size: 14px; line-height: 1.6;
+    padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; }
+  .demo-bar .in { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+  .demo-bar b { color: #3d2c06; }
+  .demo-bar .home { color: #24463a; font-weight: 800; text-decoration: none; white-space: nowrap; }
+  .demo-bar .tag { background: #c8a96b; color: #17372d; font-weight: 700; font-size: 12px; padding: 2px 10px; border-radius: 999px; letter-spacing: .05em; }
+  .demo-bar .msg { flex: 1 1 320px; min-width: 0; }
+  .demo-bar nav.links { display: flex; gap: 8px; flex-wrap: wrap; }
+  .demo-bar nav.links a { color: #24463a; font-weight: 600; text-decoration: none; border: 1px solid #c8a96b; background: #fffdf8; padding: 4px 12px; border-radius: 999px; white-space: nowrap; }
+  .demo-bar nav.links a:hover { background: #fff6e4; }
+  .demo-bar nav.links a.on { background: #24463a; color: #fff; border-color: #24463a; }
+  .demo-bar a:focus-visible { outline: 2px solid #24463a; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <div class="demo-bar"><div class="in">
+  <a class="home" href="./">← 阿珀・鐘點核對單</a>
+  <span class="tag">試用版</span>
+  <span class="msg">學校、老師、信箱都是虛構的，按寄出<b>不會真的寄信</b>，重新整理就還原。建議先按名單裡的「預覽」，再試「批次寄送」和「匯入資料」。</span>
+  <nav class="links" aria-label="試用頁面">
+    <a href="demo.html" class="on" aria-current="page">管理後台</a>
+    <a href="mail.html">老師收到的信</a>
+    <a href="teacher.html">老師查詢頁</a>
+  </nav></div></div>
+  <header>
+    <div class="head-row">
+      <h1>鐘點核對單後台</h1>
+      <span class="period" id="hPeriod"></span>
+      <span class="me" id="hMe"></span>
+    </div>
+    <nav id="nav">
+      <button data-tab="overview" class="on">總覽與寄送</button>
+      <button data-tab="import">匯入資料</button>
+      <button data-tab="teachers">教師信箱</button>
+      <button data-tab="logs">紀錄</button>
+      <button data-tab="settings">設定</button>
+    </nav>
+  </header>
+
+  <main>
+    <div id="loading" class="loading">載入中…</div>
+
+    <!-- 總覽與寄送 -->
+    <section class="tab on" id="tab-overview">
+      <div id="ovBanner"></div>
+      <div class="stats" id="stats"></div>
+
+      <div class="card">
+        <h2>寄送核對單</h2>
+        <div class="row">
+          <button class="btn gold" id="batchBtn">批次寄送</button>
+          <button class="btn ghost" id="testBtn">寄測試信給我</button>
+          <span class="muted grow" id="quotaText"></span>
+        </div>
+        <div id="progressBox" class="hidden">
+          <div class="progress"><div id="progressBar"></div></div>
+          <div class="row">
+            <span class="grow" id="progressText"></span>
+            <button class="btn danger sm" id="pauseBtn">暫停</button>
+          </div>
+        </div>
+        <div class="hint" style="margin-top:8px">批次寄送只寄「待寄」的老師；寄失敗的請修正信箱後按該列的「重寄」。</div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="margin-bottom:12px">
+          <div class="chips" id="filters"></div>
+          <div class="grow"></div>
+          <input type="search" id="search" placeholder="搜尋姓名或信箱" style="max-width:220px">
+        </div>
+        <div class="table-wrap"><table class="t" id="recTable"></table></div>
+        <div class="muted" id="recCount" style="margin-top:6px"></div>
+      </div>
+    </section>
+
+    <!-- 匯入資料 -->
+    <section class="tab" id="tab-import">
+      <div class="card">
+        <h2>匯入本期時數 <small>會取代目前的「當月總計」，舊資料自動備份</small></h2>
+        <p class="muted" style="margin-top:0">可以上傳 CSV 檔，或直接從 Excel 選取儲存格複製、貼到下面。第一列要是標題，支援兩種格式：</p>
+        <div class="grid2">
+          <div>
+            <b>格式一：一位老師一列</b>
+            <pre class="code" id="fmtWide"></pre>
+            <div class="hint">電子信箱可省略，會自動從「教師信箱」對照。</div>
+          </div>
+          <div>
+            <b>格式二：一筆時數一列（自動加總）</b>
+            <pre class="code" id="fmtLong"></pre>
+            <div class="hint">項目可寫欄位標題或顯示名稱。</div>
+          </div>
+        </div>
+        <label class="f">上傳 CSV 檔</label>
+        <input type="file" id="importFile" accept=".csv,.txt,text/csv">
+        <label class="f">或貼上資料</label>
+        <textarea id="importText" rows="6" placeholder="從 Excel 複製後直接貼上"></textarea>
+        <div class="row" style="margin-top:12px">
+          <button class="btn" id="importCheckBtn">檢查資料</button>
+          <span class="muted" id="importFileInfo"></span>
+        </div>
+      </div>
+      <div class="card hidden" id="importResult"></div>
+    </section>
+
+    <!-- 教師信箱 -->
+    <section class="tab" id="tab-teachers">
+      <div class="card">
+        <h2>教師信箱 <small>匯入時數時用姓名自動對照信箱</small></h2>
+        <p class="muted" style="margin-top:0" id="legacyInfo"></p>
+        <div class="row" style="margin-bottom:12px">
+          <input type="search" id="tSearch" placeholder="搜尋姓名或信箱" style="max-width:240px">
+          <div class="grow"></div>
+          <button class="btn ghost" id="tAddBtn">新增一位</button>
+        </div>
+        <div class="table-wrap"><table class="t" id="tTable"></table></div>
+      </div>
+      <div class="card">
+        <h2>批次匯入教師信箱 <small>已有的會更新、沒有的會新增</small></h2>
+        <pre class="code">姓名,電子信箱
+王小明,wang@example.com</pre>
+        <label class="f">上傳 CSV 檔</label>
+        <input type="file" id="tFile" accept=".csv,.txt,text/csv">
+        <label class="f">或貼上資料</label>
+        <textarea id="tText" rows="5" placeholder="從 Excel 複製「姓名」「電子信箱」兩欄後貼上"></textarea>
+        <div class="row" style="margin-top:12px"><button class="btn" id="tImportBtn">匯入</button></div>
+      </div>
+    </section>
+
+    <!-- 紀錄 -->
+    <section class="tab" id="tab-logs">
+      <div class="card">
+        <div class="row" style="margin-bottom:12px">
+          <div class="chips" id="logChips">
+            <button class="chip on" data-log="mail">寄送紀錄</button>
+            <button class="chip" data-log="query">老師查詢紀錄</button>
+            <button class="chip" data-log="action">操作紀錄</button>
+          </div>
+          <div class="grow"></div>
+          <input type="search" id="logSearch" placeholder="搜尋" style="max-width:200px">
+          <button class="btn ghost sm" id="logReload">重新整理</button>
+        </div>
+        <div class="table-wrap"><table class="t" id="logTable"></table></div>
+        <div class="muted" style="margin-top:6px">只顯示最近 500 筆，完整紀錄在試算表裡。</div>
+      </div>
+    </section>
+
+    <!-- 設定 -->
+    <section class="tab" id="tab-settings">
+      <div class="card">
+        <h2>本期資訊</h2>
+        <label class="f" for="cTitle">標題</label>
+        <input type="text" id="cTitle">
+        <div class="hint">例：115年9月份兼代課暨輔導課鐘點核對單</div>
+        <div class="grid2">
+          <div>
+            <label class="f" for="cPeriod">結算期間</label>
+            <input type="text" id="cPeriod">
+            <div class="hint">例：4/27 ~ 5/29（共5週）。換新的一期一定要改，系統靠它分辨哪些人本期寄過了。</div>
+          </div>
+          <div>
+            <label class="f" for="cSendDate">寄發日期</label>
+            <div class="row"><input type="text" id="cSendDate" class="grow" style="width:auto"><button class="btn ghost sm" id="todayBtn">填今天</button></div>
+          </div>
+        </div>
+        <label class="f">注意事項 <span class="muted">（每一項顯示成一點）</span></label>
+        <div class="notes-list" id="notesList"></div>
+        <button class="btn ghost sm" id="addNoteBtn">＋ 新增一項</button>
+      </div>
+
+      <div class="card">
+        <h2>寄信設定</h2>
+        <div class="grid2">
+          <div>
+            <label class="f" for="cSender">寄件人名稱</label>
+            <input type="text" id="cSender">
+            <div class="hint">也會出現在「時數有疑問請洽○○」。</div>
+          </div>
+          <div>
+            <label class="f" for="cReplyTo">回覆信箱</label>
+            <input type="email" id="cReplyTo">
+            <div class="hint">老師按「回覆」時寄到哪裡；留白＝寄信的帳號。</div>
+          </div>
+          <div>
+            <label class="f" for="cFallback">代收信箱</label>
+            <input type="email" id="cFallback">
+            <div class="hint">沒登錄信箱的老師改寄到這裡，主旨會標「請轉交」；留白＝不寄。</div>
+          </div>
+          <div>
+            <label class="f" for="cUrl">查詢網址</label>
+            <input type="text" id="cUrl">
+            <div class="hint" id="autoUrlHint"></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:16px"><button class="btn" id="saveConfigBtn">儲存本期資訊與寄信設定</button></div>
+      </div>
+
+      <div class="card">
+        <h2>核對項目 <small>核對單表格要顯示哪些欄位</small></h2>
+        <p class="muted" style="margin-top:0">「欄位標題」要和當月總計（或 CSV）的欄名一模一樣。「合併表頭」相同且排在一起的項目，表頭會合併成一格。顯示名稱可按 Enter 換行。</p>
+        <div class="item-row item-head"><div>欄位標題</div><div>顯示名稱</div><div>單位</div><div>合併表頭</div><div></div></div>
+        <div id="itemsList"></div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn ghost sm" id="addItemBtn">＋ 新增項目</button>
+          <div class="grow"></div>
+          <button class="btn" id="saveItemsBtn">儲存核對項目</button>
+        </div>
+        <label class="f">表格預覽</label>
+        <div id="itemsPreview"></div>
+      </div>
+
+      <div class="card">
+        <h2>管理員 <small>可以進入這個後台的 Google 帳號</small></h2>
+        <textarea id="adminsText" rows="4"></textarea>
+        <div class="hint">一行一個 Email。新管理員也要有這份試算表的編輯權限。</div>
+        <div class="row" style="margin-top:12px"><button class="btn" id="saveAdminsBtn">儲存管理員</button></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="modalBg" class="modal-bg hidden">
+    <div class="modal" id="modal">
+      <h3 id="mTitle"></h3>
+      <div class="body" id="mBody"></div>
+      <div class="foot" id="mFoot"></div>
+    </div>
+  </div>
+  <div id="toast" class="hidden"></div>
+
+  <script src="assets/fake-backend.js"></script>
+  <script>
+    var S = null;
+    var filter = 'all';
+    var logKind = 'mail';
+    var logs = null;
+    var teachers = [];
+    var pendingImport = null;
+    var pauseFlag = false;
+
+    function $(id) { return document.getElementById(id); }
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function call(fn) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      return new Promise(function (resolve, reject) {
+        var r = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
+        r[fn].apply(r, args);
+      });
+    }
+    function errMsg(e) { return (e && e.message) ? e.message : String(e); }
+
+    var toastTimer = null;
+    function toast(msg, isErr) {
+      var t = $('toast');
+      t.textContent = msg;
+      t.className = isErr ? 'err' : '';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { t.className = 'hidden'; }, isErr ? 6000 : 3000);
+    }
+
+    /* 通用對話框：buttons = [{text, cls, value}]，回傳按下的 value（關閉＝null） */
+    function modal(title, body, buttons, opts) {
+      opts = opts || {};
+      return new Promise(function (resolve) {
+        $('mTitle').textContent = title;
+        var b = $('mBody');
+        b.className = 'body' + (opts.html ? ' html' : '');
+        if (opts.html) b.innerHTML = body; else b.textContent = body;
+        $('modal').className = 'modal' + (opts.wide ? ' wide' : '');
+        var foot = $('mFoot');
+        foot.textContent = '';
+        function close(v) { $('modalBg').classList.add('hidden'); resolve(v); }
+        (buttons || [{ text: '確定', value: true }]).forEach(function (btn) {
+          var el = document.createElement('button');
+          el.className = 'btn ' + (btn.cls || '');
+          el.textContent = btn.text;
+          el.onclick = function () {
+            if (btn.check && !btn.check()) return;
+            close(btn.value);
+          };
+          foot.appendChild(el);
+        });
+        $('modalBg').onclick = function (e) { if (e.target === $('modalBg')) close(null); };
+        $('modalBg').classList.remove('hidden');
+        if (opts.focus) setTimeout(function () { var f = $(opts.focus); if (f) f.focus(); }, 30);
+      });
+    }
+    function confirmBox(title, body, okText, okCls) {
+      return modal(title, body, [{ text: '取消', cls: 'ghost', value: false }, { text: okText || '確定', cls: okCls || '', value: true }]);
+    }
+
+    /* ───────── 分頁 ───────── */
+    Array.prototype.forEach.call(document.querySelectorAll('#nav button'), function (btn) {
+      btn.onclick = function () { showTab(btn.getAttribute('data-tab')); };
+    });
+    function showTab(name) {
+      Array.prototype.forEach.call(document.querySelectorAll('#nav button'), function (b) {
+        b.classList.toggle('on', b.getAttribute('data-tab') === name);
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (s) {
+        s.classList.toggle('on', s.id === 'tab-' + name);
+      });
+      if (name === 'logs' && !logs) loadLogs();
+      if (name === 'teachers') loadTeachers();
+    }
+
+    /* ───────── 載入 ───────── */
+    function load() {
+      return call('adminInit').then(function (data) {
+        S = data;
+        $('loading').classList.add('hidden');
+        $('hMe').textContent = data.me;
+        $('hPeriod').textContent = data.config.period ? '本期：' + data.config.period : '尚未設定結算期間';
+        renderOverview();
+        renderSettings();
+        renderFormats();
+      }).catch(function (e) {
+        $('loading').textContent = '載入失敗：' + errMsg(e);
+      });
+    }
+
+    function itemName(it) { return (it.group ? it.group + '－' : '') + it.label.replace(/\n/g, ''); }
+    function itemHead(it) {
+      return (it.group ? '<span class="grp">' + esc(it.group) + '</span>' : '') + esc(it.label).replace(/\n/g, '<br>');
+    }
+
+    /* ───────── 總覽 ───────── */
+    function recState(r) {
+      if (!r.hasHours) return 'nohours';
+      if (r.status === '成功') return 'sent';
+      if (r.status) return 'failed';
+      if (!r.sendTo) return 'noaddr';
+      return 'pending';
+    }
+
+    function renderOverview() {
+      var recs = S.records;
+      var count = { all: recs.length, pending: 0, sent: 0, failed: 0, noaddr: 0, unreg: 0 };
+      recs.forEach(function (r) {
+        var st = recState(r);
+        if (count[st] !== undefined) count[st]++;
+        if (!r.registered && r.hasHours) count.unreg++;
+      });
+      S.count = count;
+
+      var banner = '';
+      if (S.mailAuthError) banner += '<div class="banner err"><b>寄信權限還沒授權，暫時不能寄信。</b><br>' +
+        '請到 Apps Script 編輯器，上方函式選單選「authorizeMail」→ 按「執行」→ 依畫面按「允許」，完成後重新整理這個頁面。' +
+        '<div class="hint" style="color:inherit">（詳細訊息：' + esc(S.mailAuthError) + '）</div></div>';
+      if (!S.hasTotal) banner += '<div class="banner">還沒有「當月總計」資料，請到「匯入資料」上傳本期時數。</div>';
+      if (!S.config.period) banner += '<div class="banner err">尚未設定「結算期間」，無法寄送。請到「設定」填寫。</div>';
+      if (count.noaddr) banner += '<div class="banner">有 ' + count.noaddr + ' 位老師沒有信箱、也沒設定代收信箱，不會寄出。可在下表按「設定信箱」，或到「設定」填代收信箱。</div>';
+      $('ovBanner').innerHTML = banner;
+
+      $('stats').innerHTML =
+        stat(recs.length, '本期老師') +
+        stat(count.sent, '已寄出') +
+        stat(count.pending, '待寄', 'gold') +
+        stat(count.failed, '寄送失敗', count.failed ? 'red' : '') +
+        stat(count.unreg, '未登錄信箱', count.unreg ? 'gold' : '') +
+        stat(S.quota, '今日剩餘寄信額度');
+
+      $('batchBtn').textContent = '批次寄送（待寄 ' + count.pending + ' 位）';
+      $('batchBtn').disabled = !count.pending || !S.config.period || S.quota < 1;
+      $('quotaText').textContent = S.mailAuthError ? '尚未授權寄信，請先完成上方的授權步驟。'
+        : !count.pending ? '本期都寄完了。'
+        : S.quota < 1 ? '今日寄信額度已用完，明天再寄。'
+        : count.pending > S.quota ? '今日額度不足，會先寄 ' + S.quota + ' 封，其餘明天再按一次。'
+        : '';
+
+      var chips = [['all', '全部'], ['pending', '待寄'], ['sent', '已寄出'], ['failed', '失敗'], ['unreg', '未登錄信箱'], ['noaddr', '無法寄送']];
+      $('filters').innerHTML = chips.map(function (c) {
+        return '<button class="chip' + (filter === c[0] ? ' on' : '') + '" data-f="' + c[0] + '">' + c[1] + ' ' + count[c[0]] + '</button>';
+      }).join('');
+      Array.prototype.forEach.call($('filters').children, function (el) {
+        el.onclick = function () { filter = el.getAttribute('data-f'); renderOverview(); };
+      });
+      renderRecords();
+    }
+    function stat(n, label, cls) {
+      return '<div class="stat ' + (cls || '') + '"><div class="n">' + n + '</div><div class="l">' + label + '</div></div>';
+    }
+
+    function renderRecords() {
+      var q = $('search').value.trim().toLowerCase();
+      var rows = S.records.filter(function (r) {
+        var st = recState(r);
+        if (filter === 'unreg') { if (r.registered || !r.hasHours) return false; }
+        else if (filter !== 'all' && st !== filter) return false;
+        if (q && r.name.toLowerCase().indexOf(q) === -1 && (r.sendTo || '').indexOf(q) === -1) return false;
+        return true;
+      });
+
+      var head = '<tr><th>姓名</th>' + S.items.map(function (it) {
+        return '<th class="num ih">' + itemHead(it) + '</th>';
+      }).join('') + '<th>寄送信箱</th><th>狀態</th><th>操作</th></tr>';
+
+      var body = rows.map(function (r) {
+        var st = recState(r);
+        var pill = {
+          sent: '<span class="pill ok">已寄 ' + esc(r.statusTime) + '</span>',
+          failed: '<span class="pill err" title="' + esc(r.status) + '">失敗 ' + esc(r.statusTime) + '</span>',
+          pending: '<span class="pill wait">待寄</span>',
+          noaddr: '<span class="pill none">無信箱</span>',
+          nohours: '<span class="pill none">無時數</span>'
+        }[st];
+        var mail = r.sendTo
+          ? '<div class="email-cell' + (r.registered ? '' : ' unreg') + '" title="' + esc(r.sendTo) + '">' +
+            (r.registered ? '' : '代收：') + esc(r.sendTo) + '</div>'
+          : '<span class="muted">—</span>';
+        var n = esc(r.name);
+        var actions = '<button class="btn ghost sm" data-act="preview" data-n="' + n + '">預覽</button> ';
+        if (r.sendTo && r.hasHours) {
+          actions += '<button class="btn ghost sm" data-act="send" data-n="' + n + '">' + (r.status ? '重寄' : '寄出') + '</button> ';
+        }
+        actions += '<button class="btn ghost sm" data-act="email" data-n="' + n + '">' + (r.registered ? '改信箱' : '設定信箱') + '</button>';
+        return '<tr><td class="nowrap"><b>' + n + '</b></td>' +
+          r.values.map(function (v) { return '<td class="num' + (v ? '' : ' z') + '">' + v + '</td>'; }).join('') +
+          '<td>' + mail + '</td><td>' + pill + (st === 'failed' ? '<div class="err-note" title="' + esc(r.status) + '">' + esc(r.status.replace(/^失敗：/, '')) + '</div>' : '') +
+          '</td><td class="nowrap">' + actions + '</td></tr>';
+      }).join('');
+
+      $('recTable').innerHTML = head + (body || '<tr><td colspan="' + (S.items.length + 4) + '" class="muted" style="text-align:center;padding:24px">沒有符合的老師</td></tr>');
+      $('recCount').textContent = '顯示 ' + rows.length + ' / ' + S.records.length + ' 位';
+    }
+
+    $('search').oninput = renderRecords;
+    $('recTable').onclick = function (e) {
+      var btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      var name = btn.getAttribute('data-n');
+      var act = btn.getAttribute('data-act');
+      if (act === 'preview') openPreview(name);
+      if (act === 'send') sendOne(name);
+      if (act === 'email') editEmail(name);
+    };
+
+    function findRec(name) {
+      for (var i = 0; i < S.records.length; i++) if (S.records[i].name === name) return S.records[i];
+      return null;
+    }
+
+    function openPreview(name) {
+      toast('產生預覽中…');
+      call('previewMail', name).then(function (p) {
+        var r = findRec(name);
+        var info = '<div class="muted" style="margin-bottom:8px">收件人：' + esc(p.to || '（無信箱）') +
+          (p.registered ? '' : '（代收）') + '<br>主旨：' + esc(p.subject) + '</div>' +
+          '<iframe id="previewFrame"></iframe>';
+        var btns = [{ text: '關閉', cls: 'ghost', value: null }, { text: '寄測試信給我', cls: 'ghost', value: 'test' }];
+        if (r && r.sendTo && r.hasHours) btns.push({ text: r.status ? '重寄給這位老師' : '寄給這位老師', value: 'send' });
+        var done = modal(name + ' 老師的核對單', info, btns, { html: true, wide: true });
+        $('previewFrame').srcdoc = p.html;
+        return done;
+      }).then(function (v) {
+        if (v === 'send') sendOne(name, true);
+        if (v === 'test') sendTest(name);
+      }).catch(function (e) { toast(errMsg(e), true); });
+    }
+
+    function sendOne(name, skipConfirm) {
+      var r = findRec(name);
+      var go = skipConfirm ? Promise.resolve(true) : confirmBox('寄出核對單',
+        '寄給 ' + name + ' 老師\n信箱：' + r.sendTo + (r.registered ? '' : '\n（未登錄信箱，寄到代收信箱）') +
+        (r.status ? '\n\n本期已寄過，確定要再寄一次？' : ''), '寄出');
+      go.then(function (ok) {
+        if (!ok) return;
+        toast('寄送中…');
+        return call('sendToTeacher', name).then(function (res) {
+          toast(res === '成功' ? '已寄出給 ' + name + ' 老師' : res, res !== '成功');
+          return load();
+        });
+      }).catch(function (e) { toast(errMsg(e), true); });
+    }
+
+    function editEmail(name, onSaved) {
+      var r = name ? findRec(name) : null;
+      var body = (name ? '' : '<label class="f" for="eName">姓名</label><input type="text" id="eName">') +
+        '<label class="f" for="eEmail">電子信箱</label>' +
+        '<input type="email" id="eEmail" value="' + esc(r && r.registered ? r.email : '') + '">' +
+        '<div class="hint">會存進「教師信箱」，' + (name ? '也會更新本期當月總計。' : '之後匯入時數會自動對照。') + '</div>';
+      modal(name ? '設定 ' + name + ' 老師的信箱' : '新增教師信箱', body, [
+        { text: '取消', cls: 'ghost', value: null },
+        { text: '儲存', value: 'save', check: function () { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($('eEmail').value.trim()) || (toast('信箱格式不正確', true), false); } }
+      ], { html: true, focus: name ? 'eEmail' : 'eName' }).then(function (v) {
+        if (v !== 'save') return;
+        var n = name || '';
+        var em = $('eEmail').value.trim();
+        if (!name) n = $('eName').value.trim();
+        return call('setTeacherEmail', n, em).then(function () {
+          toast('已儲存');
+          if (onSaved) onSaved();
+          return load();
+        });
+      }).catch(function (e) { toast(errMsg(e), true); });
+    }
+
+    /* 測試信：不用原生下拉選單（在 Google 網頁框架裡會點錯位），改成搜尋＋點選 */
+    function sendTest(name) {
+      toast('寄送中…');
+      return call('sendTestToMe', name).then(function (to) {
+        toast('已寄出「' + name + '」的測試信到 ' + to);
+      }).catch(function (e) { toast(errMsg(e), true); });
+    }
+
+    $('testBtn').onclick = function () {
+      var names = S.records.filter(function (r) { return r.hasHours; }).map(function (r) { return r.name; });
+      if (!names.length) { toast('目前沒有老師資料', true); return; }
+      var picked = '';
+      modal('寄測試信給我',
+        '<label class="f" for="testSearch">用哪位老師的資料</label>' +
+        '<input type="search" id="testSearch" placeholder="輸入姓名搜尋">' +
+        '<div id="testList" class="pick-list"></div>' +
+        '<div class="hint">信會寄到 ' + esc(S.me) + '，不會記入寄送紀錄。</div>',
+        [{ text: '取消', cls: 'ghost', value: null },
+         { text: '請先選一位老師', value: 'go', check: function () { return !!picked; } }],
+        { html: true, focus: 'testSearch' }
+      ).then(function (v) {
+        if (v === 'go' && picked) sendTest(picked);
+      });
+
+      var goBtn = $('mFoot').lastChild;
+      goBtn.disabled = true;
+      function render() {
+        var q = $('testSearch').value.trim();
+        var list = names.filter(function (n) { return !q || n.indexOf(q) !== -1; });
+        $('testList').innerHTML = list.map(function (n) {
+          return '<button type="button" class="pick' + (n === picked ? ' on' : '') + '" data-n="' + esc(n) + '">' + esc(n) + '</button>';
+        }).join('') || '<div class="muted" style="padding:8px">找不到</div>';
+      }
+      $('testSearch').oninput = render;
+      $('testList').onclick = function (e) {
+        var b = e.target.closest('button.pick');
+        if (!b) return;
+        picked = b.getAttribute('data-n');
+        goBtn.disabled = false;
+        goBtn.textContent = '寄出「' + picked + '」的測試信';
+        render();
+      };
+      render();
+    };
+
+    /* 批次寄送 */
+    $('batchBtn').onclick = function () {
+      var c = S.count;
+      var unreg = S.records.filter(function (r) { return recState(r) === 'pending' && !r.registered; }).length;
+      confirmBox('確認批次寄送',
+        '結算期間：' + S.config.period + '\n' +
+        '這次要寄：' + c.pending + ' 位' + (unreg ? '（其中 ' + unreg + ' 位寄到代收信箱）' : '') + '\n' +
+        '本期已寄過：' + c.sent + ' 位（不會重寄）\n' +
+        '今日剩餘額度：' + S.quota + ' 封' +
+        (c.pending > S.quota ? '\n\n額度不夠，今天會先寄 ' + S.quota + ' 封，剩下的明天再按一次。' : '') +
+        '\n\n寄送期間請不要關閉這個頁面。', '開始寄送', 'gold'
+      ).then(function (ok) { if (ok) runBatch(); });
+    };
+
+    function runBatch() {
+      var total = S.count.pending, ok = 0, fail = 0;
+      pauseFlag = false;
+      $('progressBox').classList.remove('hidden');
+      $('batchBtn').disabled = true;
+      $('pauseBtn').disabled = false;
+      update('開始寄送…');
+
+      function update(msg) {
+        $('progressBar').style.width = (total ? Math.round((ok + fail) / total * 100) : 100) + '%';
+        $('progressText').textContent = msg || ('已寄 ' + (ok + fail) + ' / ' + total + '（成功 ' + ok + (fail ? '、失敗 ' + fail : '') + '）');
+      }
+      function finish(msg) {
+        update(msg);
+        $('pauseBtn').disabled = true;
+        load();
+      }
+      function step() {
+        if (pauseFlag) { finish('已暫停：成功 ' + ok + ' 封' + (fail ? '、失敗 ' + fail + ' 封' : '') + '。再按「批次寄送」會接著寄。'); return; }
+        call('sendBatchChunk').then(function (r) {
+          ok += r.ok; fail += r.fail;
+          update();
+          if (r.stopReason && r.stopReason !== '時間到') {
+            finish(r.stopReason + '：成功 ' + ok + ' 封，還有 ' + r.left + ' 位沒寄，明天再按一次會接著寄。');
+          } else if (r.left > 0 && (r.ok + r.fail) > 0) {
+            step();
+          } else {
+            finish('寄送完成：成功 ' + ok + ' 封' + (fail ? '，失敗 ' + fail + ' 封（請看下表「失敗」）' : '') + '。');
+          }
+        }).catch(function (e) {
+          finish('發生錯誤而停止：' + errMsg(e) + '（成功 ' + ok + ' 封）');
+        });
+      }
+      step();
+    }
+    $('pauseBtn').onclick = function () {
+      pauseFlag = true;
+      $('pauseBtn').disabled = true;
+      $('progressText').textContent = '這一段寄完就暫停…';
+    };
+
+    /* ───────── CSV／貼上 ───────── */
+    function parseTable(text) {
+      text = text.replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+      var first = text.split('\n')[0];
+      var d = first.indexOf('\t') !== -1 ? '\t' : ',';
+      var rows = [], row = [], cell = '', q = false;
+      for (var i = 0; i < text.length; i++) {
+        var ch = text[i];
+        if (q) {
+          if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+          else cell += ch;
+        } else if (ch === '"' && cell === '') { q = true; }
+        else if (ch === d) { row.push(cell); cell = ''; }
+        else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+        else cell += ch;
+      }
+      if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+      return rows.filter(function (r) { return r.some(function (c) { return c.trim() !== ''; }); });
+    }
+
+    /* 讀檔：先試 UTF-8，不是的話用 Big5（Windows 版 Excel 存的 CSV） */
+    function readFileText(file) {
+      return new Promise(function (resolve, reject) {
+        var fr = new FileReader();
+        fr.onload = function () {
+          var buf = fr.result, text;
+          try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+          catch (e) { text = new TextDecoder('big5').decode(buf); }
+          resolve(text);
+        };
+        fr.onerror = function () { reject(new Error('讀不到檔案')); };
+        fr.readAsArrayBuffer(file);
+      });
+    }
+
+    function bindFile(inputId, textId, infoId) {
+      $(inputId).onchange = function () {
+        var f = $(inputId).files[0];
+        if (!f) return;
+        readFileText(f).then(function (text) {
+          $(textId).value = text;
+          if (infoId) $(infoId).textContent = '已讀入：' + f.name;
+        }).catch(function (e) { toast(errMsg(e), true); });
+      };
+    }
+    bindFile('importFile', 'importText', 'importFileInfo');
+    bindFile('tFile', 'tText');
+
+    /* ───────── 匯入資料 ───────── */
+    function renderFormats() {
+      var heads = S.items.map(function (it) { return it.header; });
+      $('fmtWide').textContent = '姓名,' + heads.join(',') + ',電子信箱\n王小明,' + heads.map(function (h, i) { return i === 0 ? 8 : ''; }).join(',') + ',wang@example.com';
+      $('fmtLong').textContent = '項目,姓名,時數\n' + heads[0] + ',王小明,1\n' + heads[0] + ',王小明,2\n' + (heads[1] || heads[0]) + ',李大華,1';
+    }
+
+    $('importCheckBtn').onclick = function () {
+      var rows = parseTable($('importText').value);
+      if (rows.length < 2) { toast('請先上傳檔案或貼上資料（第一列是標題）', true); return; }
+      pendingImport = rows;
+      $('importCheckBtn').disabled = true;
+      call('previewImport', rows).then(function (sum) {
+        renderImportResult(sum);
+      }).catch(function (e) {
+        $('importResult').classList.remove('hidden');
+        $('importResult').innerHTML = '<div class="banner err" style="margin:0;white-space:pre-line">' + esc(errMsg(e)) + '</div>';
+      }).then(function () { $('importCheckBtn').disabled = false; });
+    };
+
+    function renderImportResult(sum) {
+      var box = $('importResult');
+      box.classList.remove('hidden');
+      var h = '<h2>檢查結果 <small>' + esc(sum.format) + '</small></h2>';
+      h += '<div class="stats">' + stat(sum.count, '位老師有時數') + stat(sum.noEmail.length, '位找不到信箱', sum.noEmail.length ? 'gold' : '') +
+        S.items.map(function (it, i) { return stat(sum.totals[i], esc(itemName(it)) + ' 合計'); }).join('') + '</div>';
+
+      if (sum.badCount) h += '<div class="banner err">有 ' + sum.badCount + ' 列有問題，這些列不會匯入：<ul class="list">' +
+        sum.badRows.map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') + '</ul></div>';
+      if (sum.unknownItems.length) h += '<div class="banner">這些項目不在「核對項目」裡，不會匯入：' + esc(sum.unknownItems.join('、')) +
+        '<br>如果需要，請先到「設定 → 核對項目」新增。</div>';
+      if (sum.ignoredCols.length) h += '<div class="banner">這些欄位用不到，會略過：' + esc(sum.ignoredCols.join('、')) + '</div>';
+      if (sum.noEmail.length) h += '<div class="banner">找不到信箱：' + esc(sum.noEmail.join('、')) +
+        '<br>匯入後會寄到代收信箱（有設定的話），也可以之後在「總覽」按「設定信箱」。</div>';
+
+      h += '<b>前幾位預覽</b><div class="table-wrap" style="margin:6px 0 16px"><table class="t"><tr><th>姓名</th>' +
+        S.items.map(function (it) { return '<th class="num ih">' + itemHead(it) + '</th>'; }).join('') + '<th>信箱</th></tr>' +
+        sum.sample.map(function (r) {
+          return '<tr><td>' + esc(r.name) + '</td>' + r.values.map(function (v) { return '<td class="num' + (v ? '' : ' z') + '">' + v + '</td>'; }).join('') +
+            '<td class="email-cell">' + (esc(r.email) || '<span class="muted">—</span>') + '</td></tr>';
+        }).join('') + '</table></div>';
+
+      h += sum.count
+        ? '<div class="row"><button class="btn gold" id="importGoBtn">確認匯入 ' + sum.count + ' 位老師</button>' +
+          '<span class="muted">會取代目前的「當月總計」，舊的會自動備份成新工作表（保留最近 3 份）。</span></div>'
+        : '<div class="banner err">沒有可匯入的資料。</div>';
+      box.innerHTML = h;
+      if (sum.count) $('importGoBtn').onclick = doImport;
+    }
+
+    function doImport() {
+      confirmBox('確認匯入', '匯入後「當月總計」會換成這次的資料。\n舊資料會先自動備份。', '匯入', 'gold').then(function (ok) {
+        if (!ok) return;
+        $('importGoBtn').disabled = true;
+        return call('importData', pendingImport).then(function (res) {
+          $('importResult').innerHTML = '<h2>匯入完成</h2><p>已匯入 ' + res.count + ' 位老師。' +
+            (res.backup ? '舊資料備份在工作表「' + esc(res.backup) + '」。' : '') + '</p>' +
+            '<div class="banner">別忘了到「設定」更新<b>結算期間</b>和<b>寄發日期</b>，再寄送。</div>' +
+            '<button class="btn" id="goSettingsBtn">前往設定</button>';
+          $('goSettingsBtn').onclick = function () { showTab('settings'); $('cPeriod').focus(); };
+          $('importText').value = '';
+          $('importFile').value = '';
+          $('importFileInfo').textContent = '';
+          return load();
+        });
+      }).catch(function (e) { toast(errMsg(e), true); if ($('importGoBtn')) $('importGoBtn').disabled = false; });
+    }
+
+    /* ───────── 教師信箱 ───────── */
+    function loadTeachers() {
+      return call('getTeachers').then(function (res) {
+        teachers = res.teachers;
+        $('legacyInfo').textContent = res.hasLegacy
+          ? '試算表裡原本的「教師清單」有 ' + res.legacyCount + ' 位老師的信箱，也會一起對照；下面這份名單優先。'
+          : '';
+        renderTeachers();
+      }).catch(function (e) { toast(errMsg(e), true); });
+    }
+    function renderTeachers() {
+      var q = $('tSearch').value.trim().toLowerCase();
+      var rows = teachers.filter(function (t) { return !q || t.name.toLowerCase().indexOf(q) !== -1 || t.email.indexOf(q) !== -1; });
+      $('tTable').innerHTML = '<tr><th>姓名</th><th>電子信箱</th><th></th></tr>' + (rows.map(function (t) {
+        var n = esc(t.name);
+        return '<tr><td><b>' + n + '</b></td><td>' + (esc(t.email) || '<span class="muted">—</span>') + '</td><td class="nowrap">' +
+          '<button class="btn ghost sm" data-t="edit" data-n="' + n + '">修改</button> ' +
+          '<button class="btn danger sm" data-t="del" data-n="' + n + '">刪除</button></td></tr>';
+      }).join('') || '<tr><td colspan="3" class="muted" style="text-align:center;padding:20px">還沒有資料' +
+        (teachers.length ? '符合搜尋' : '，可以用下方批次匯入') + '</td></tr>');
+    }
+    $('tSearch').oninput = renderTeachers;
+    $('tTable').onclick = function (e) {
+      var btn = e.target.closest('button[data-t]');
+      if (!btn) return;
+      var name = btn.getAttribute('data-n');
+      if (btn.getAttribute('data-t') === 'edit') {
+        var t = teachers.filter(function (x) { return x.name === name; })[0];
+        modal('修改 ' + name + ' 老師的信箱', '<label class="f" for="eEmail">電子信箱</label><input type="email" id="eEmail" value="' + esc(t ? t.email : '') + '">',
+          [{ text: '取消', cls: 'ghost', value: null }, { text: '儲存', value: 'save' }], { html: true, focus: 'eEmail' }
+        ).then(function (v) {
+          if (v !== 'save') return;
+          return call('setTeacherEmail', name, $('eEmail').value.trim()).then(function () { toast('已儲存'); loadTeachers(); load(); });
+        }).catch(function (err) { toast(errMsg(err), true); });
+      } else {
+        confirmBox('刪除', '確定從教師信箱刪除 ' + name + '？', '刪除', 'danger').then(function (ok) {
+          if (!ok) return;
+          return call('deleteTeacher', name).then(function () { toast('已刪除'); loadTeachers(); });
+        }).catch(function (err) { toast(errMsg(err), true); });
+      }
+    };
+    $('tAddBtn').onclick = function () { editEmail('', loadTeachers); };
+    $('tImportBtn').onclick = function () {
+      var rows = parseTable($('tText').value);
+      if (rows.length < 2) { toast('請先上傳檔案或貼上資料（第一列是標題）', true); return; }
+      $('tImportBtn').disabled = true;
+      call('importTeachers', rows).then(function (res) {
+        modal('匯入完成', '新增 ' + res.added + ' 位、更新 ' + res.updated + ' 位。' +
+          (res.bad.length ? '\n\n以下資料格式不正確，沒有匯入：\n' + res.bad.join('\n') : ''));
+        $('tText').value = '';
+        $('tFile').value = '';
+        loadTeachers();
+      }).catch(function (e) { toast(errMsg(e), true); })
+        .then(function () { $('tImportBtn').disabled = false; });
+    };
+
+    /* ───────── 紀錄 ───────── */
+    function loadLogs() {
+      $('logTable').innerHTML = '<tr><td class="muted" style="padding:20px">載入中…</td></tr>';
+      return call('getLogs').then(function (res) { logs = res; renderLogs(); })
+        .catch(function (e) { toast(errMsg(e), true); });
+    }
+    function renderLogs() {
+      if (!logs) return;
+      var heads = {
+        mail: ['時間', '結算期間', '姓名', '寄送信箱', '登錄信箱', '結果', '操作者'],
+        query: ['時間', '姓名', '結果'],
+        action: ['時間', '操作者', '動作', '內容']
+      }[logKind];
+      var q = $('logSearch').value.trim().toLowerCase();
+      var rows = logs[logKind].filter(function (r) { return !q || r.join(' ').toLowerCase().indexOf(q) !== -1; });
+      $('logTable').innerHTML = '<tr>' + heads.map(function (h) { return '<th>' + h + '</th>'; }).join('') + '</tr>' +
+        (rows.map(function (r) {
+          return '<tr>' + heads.map(function (h, i) {
+            var v = esc(r[i]);
+            if (h === '結果') v = '<span class="pill ' + (r[i] === '成功' ? 'ok' : 'err') + '">' + v + '</span>';
+            return '<td' + (i === 0 ? ' class="nowrap"' : '') + '>' + v + '</td>';
+          }).join('') + '</tr>';
+        }).join('') || '<tr><td colspan="' + heads.length + '" class="muted" style="text-align:center;padding:20px">沒有紀錄</td></tr>');
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('#logChips .chip'), function (el) {
+      el.onclick = function () {
+        logKind = el.getAttribute('data-log');
+        Array.prototype.forEach.call(document.querySelectorAll('#logChips .chip'), function (c) { c.classList.toggle('on', c === el); });
+        renderLogs();
+      };
+    });
+    $('logSearch').oninput = renderLogs;
+    $('logReload').onclick = loadLogs;
+
+    /* ───────── 設定 ───────── */
+    function renderSettings() {
+      var c = S.config;
+      $('cTitle').value = c.title;
+      $('cPeriod').value = c.period;
+      $('cSendDate').value = c.sendDate;
+      $('cSender').value = c.senderName;
+      $('cReplyTo').value = c.replyTo;
+      $('cFallback').value = c.fallbackEmail;
+      $('cUrl').value = c.queryUrl;
+      $('autoUrlHint').textContent = '留白＝自動用目前部署的網址' + (S.autoUrl ? '：' + S.autoUrl : '（目前抓不到，建議手動填）');
+      $('notesList').textContent = '';
+      (c.notes.length ? c.notes : ['']).forEach(addNote);
+      $('itemsList').textContent = '';
+      S.items.forEach(addItem);
+      renderItemsPreview();
+      $('adminsText').value = S.admins.join('\n');
+    }
+
+    function addNote(text) {
+      var row = document.createElement('div');
+      row.className = 'note-row';
+      row.innerHTML = '<textarea rows="2"></textarea><button class="btn danger sm" title="刪除">✕</button>';
+      row.querySelector('textarea').value = text || '';
+      row.querySelector('button').onclick = function () { row.remove(); };
+      $('notesList').appendChild(row);
+    }
+    $('addNoteBtn').onclick = function () { addNote(''); };
+
+    $('todayBtn').onclick = function () {
+      var d = new Date();
+      $('cSendDate').value = d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
+    };
+
+    $('saveConfigBtn').onclick = function () {
+      var notes = Array.prototype.map.call(document.querySelectorAll('#notesList textarea'), function (t) { return t.value.trim(); })
+        .filter(function (v) { return v; });
+      var data = {
+        title: $('cTitle').value, period: $('cPeriod').value, sendDate: $('cSendDate').value,
+        senderName: $('cSender').value, replyTo: $('cReplyTo').value, fallbackEmail: $('cFallback').value,
+        queryUrl: $('cUrl').value, notes: notes
+      };
+      var periodChanged = S.config.period && data.period.trim() !== S.config.period;
+      $('saveConfigBtn').disabled = true;
+      call('saveConfig', data).then(function () {
+        toast(periodChanged ? '已儲存。結算期間已更換，本期寄送狀態重新計算。' : '已儲存');
+        return load();
+      }).catch(function (e) { toast(errMsg(e), true); })
+        .then(function () { $('saveConfigBtn').disabled = false; });
+    };
+
+    function addItem(it) {
+      it = it || { header: '', label: '', unit: '節', group: '' };
+      var row = document.createElement('div');
+      row.className = 'item-row';
+      row.innerHTML =
+        '<input type="text" data-k="header" placeholder="例：1.代課鐘點">' +
+        '<textarea data-k="label" placeholder="例：一般代課"></textarea>' +
+        '<input type="text" data-k="unit" placeholder="節">' +
+        '<input type="text" data-k="group" placeholder="（不合併留白）">' +
+        '<div class="nowrap"><button class="btn ghost sm" data-m="up" title="上移">↑</button> ' +
+        '<button class="btn ghost sm" data-m="down" title="下移">↓</button> ' +
+        '<button class="btn danger sm" data-m="del" title="刪除">✕</button></div>';
+      ['header', 'label', 'unit', 'group'].forEach(function (k) { row.querySelector('[data-k="' + k + '"]').value = it[k] || ''; });
+      row.oninput = renderItemsPreview;
+      row.querySelector('[data-m="up"]').onclick = function () { if (row.previousElementSibling) row.parentNode.insertBefore(row, row.previousElementSibling); renderItemsPreview(); };
+      row.querySelector('[data-m="down"]').onclick = function () { if (row.nextElementSibling) row.parentNode.insertBefore(row.nextElementSibling, row); renderItemsPreview(); };
+      row.querySelector('[data-m="del"]').onclick = function () { row.remove(); renderItemsPreview(); };
+      $('itemsList').appendChild(row);
+    }
+    $('addItemBtn').onclick = function () { addItem(); renderItemsPreview(); };
+
+    function collectItems() {
+      return Array.prototype.map.call($('itemsList').children, function (row) {
+        var it = {};
+        ['header', 'label', 'unit', 'group'].forEach(function (k) { it[k] = row.querySelector('[data-k="' + k + '"]').value.trim(); });
+        if (!it.label) it.label = it.header;
+        return it;
+      }).filter(function (it) { return it.header; });
+    }
+
+    /* 項目表格預覽（跟寄出的版面一樣的結構，簡化樣式） */
+    function renderItemsPreview() {
+      var items = collectItems();
+      if (!items.length) { $('itemsPreview').innerHTML = '<span class="muted">（沒有項目）</span>'; return; }
+      var hasGroup = items.some(function (it) { return it.group; });
+      var r1 = '', r2 = '', lbl = function (t) { return esc(t).replace(/\n/g, '<br>'); };
+      for (var i = 0; i < items.length; i++) {
+        var g = items[i].group;
+        if (!g) { r1 += '<th' + (hasGroup ? ' rowspan="2"' : '') + '>' + lbl(items[i].label) + '</th>'; continue; }
+        var span = 0;
+        while (i + span < items.length && items[i + span].group === g) { r2 += '<th class="sub">' + lbl(items[i + span].label) + '</th>'; span++; }
+        r1 += '<th colspan="' + span + '">' + lbl(g) + '</th>';
+        i += span - 1;
+      }
+      var r3 = items.map(function (it) { return '<td>0<small> ' + esc(it.unit) + '</small></td>'; }).join('');
+      $('itemsPreview').innerHTML = '<div class="table-wrap"><table class="t" style="text-align:center;table-layout:fixed">' +
+        '<tr>' + r1.replace(/<th/g, '<th style="text-align:center;border-left:1px solid #e3ddd0"') + '</tr>' +
+        (r2 ? '<tr>' + r2.replace(/<th class="sub"/g, '<th style="text-align:center;font-size:12px;border-left:1px solid #e3ddd0"') + '</tr>' : '') +
+        '<tr>' + r3.replace(/<td/g, '<td style="text-align:center;border-left:1px solid #e3ddd0"') + '</tr></table></div>';
+    }
+
+    $('saveItemsBtn').onclick = function () {
+      var items = collectItems();
+      if (!items.length) { toast('至少要有一個項目', true); return; }
+      confirmBox('儲存核對項目', '欄位標題要和「當月總計」的欄名一致，不然那一欄會全部顯示 0。\n確定儲存？', '儲存').then(function (ok) {
+        if (!ok) return;
+        return call('saveItems', items).then(function () { toast('已儲存核對項目'); return load(); });
+      }).catch(function (e) { toast(errMsg(e), true); });
+    };
+
+    $('saveAdminsBtn').onclick = function () {
+      var list = $('adminsText').value.split(/[\n,，;；\s]+/).map(function (v) { return v.trim(); }).filter(function (v) { return v; });
+      call('saveAdmins', list).then(function (admins) {
+        S.admins = admins;
+        $('adminsText').value = admins.join('\n');
+        toast('已儲存管理員');
+      }).catch(function (e) { toast(errMsg(e), true); });
+    };
+
+    load();
+  </script>
+</body>
+</html>
