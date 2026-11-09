@@ -24,12 +24,15 @@
     config: {
       title: '115年9月份兼代課暨輔導課鐘點核對單',
       period: '9/1 ~ 9/26（共4週）',
+      startDate: '2026-09-01',
+      endDate: '2026-09-26',
       sendDate: '2026年10月2日',
       senderName: '○○國中教務處教學組',
       replyTo: '',
       fallbackEmail: 'office@example.edu.tw',
       queryUrl: '',
       notes: [
+        '◎本次兼、代課鐘點結算自{開始}至{結束}為止，共{週數}週。',
         '由於各項經費來源不同，故兼課鐘點費並不會在同一時間全部一起入帳，若對時數有疑問，請於發出後三天內至教務處確認。',
         '◎第八節輔導課停課時間：9/25 教師節前一日補假'
       ]
@@ -96,6 +99,18 @@
   }
   function act(action, detail) { S.actionLog.push([now(), ME, action, detail]); }
 
+  // 注意事項裡的 {開始}{結束}{週數}{期間}
+  function fillPeriod(text) {
+    var wd = '日一二三四五六';
+    function p(v) { var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(v || ''); return m ? new Date(+m[1], m[2] - 1, +m[3]) : null; }
+    var s = p(S.config.startDate), e = p(S.config.endDate);
+    function md(d) { return (d.getMonth() + 1) + '/' + d.getDate() + '（' + wd.charAt(d.getDay()) + '）'; }
+    var weeks = '';
+    if (s && e && e >= s) { var mon = new Date(s.getFullYear(), s.getMonth(), s.getDate() - ((s.getDay() + 6) % 7)); weeks = String(Math.floor(Math.round((e - mon) / 86400000) / 7) + 1); }
+    var v = { '開始': s ? md(s) : '', '結束': e ? md(e) : '', '週數': weeks, '期間': S.config.period };
+    return String(text).replace(/\{(開始|結束|週數|期間)\}/g, function (m, k) { return v[k] || m; });
+  }
+
   // ───────── 核對單 HTML（跟正式版同樣的版面） ─────────
   function table(hours) {
     var c = COLOR, items = S.items, last = items.length - 1, line = '1px solid ' + c.line;
@@ -128,7 +143,7 @@
   function mailHtml(r) {
     var c = COLOR, cfg = S.config;
     var notes = cfg.notes.length ? '<ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.7;color:' + c.text + ';">' +
-      cfg.notes.map(function (n) { return '<li style="margin-bottom:6px;">' + esc(n) + '</li>'; }).join('') + '</ul>' : '';
+      cfg.notes.map(function (n) { return '<li style="margin-bottom:6px;">' + esc(fillPeriod(n)) + '</li>'; }).join('') + '</ul>' : '';
     return '<div style="margin:0;padding:24px 12px;background:' + c.pageBg + ';font-family:\'Noto Sans TC\',\'PingFang TC\',\'Microsoft JhengHei\',sans-serif;">' +
       '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;margin:0 auto;background:#fff;border:1px solid ' + c.line + ';border-radius:12px;">' +
       '<tr><td style="background:' + c.main + ';color:#fff;padding:18px 24px;border-radius:12px 12px 0 0;">' +
@@ -234,7 +249,7 @@
         if (v && !isEmail(v)) throw new Error('信箱格式不正確：' + v);
         d[k] = v;
       });
-      ['title', 'period', 'sendDate', 'senderName', 'replyTo', 'fallbackEmail', 'queryUrl'].forEach(function (k) { S.config[k] = trim(d[k]); });
+      ['title', 'period', 'startDate', 'endDate', 'sendDate', 'senderName', 'replyTo', 'fallbackEmail', 'queryUrl'].forEach(function (k) { S.config[k] = trim(d[k]); });
       S.config.notes = (d.notes || []).map(trim).filter(Boolean);
       act('修改設定', '結算期間：' + S.config.period);
       return S.config;
@@ -370,7 +385,7 @@
       }
       S.queryLog.push([now(), name, '成功']);
       return { ok: true, name: name, title: S.config.title, period: S.config.period, sendDate: S.config.sendDate,
-        notes: S.config.notes.slice(), tableHtml: table(r.hours) };
+        notes: S.config.notes.map(fillPeriod), tableHtml: table(r.hours) };
     },
     mailHtml: function (name) { return mailHtml(find(name)); }
   };

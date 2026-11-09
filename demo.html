@@ -141,6 +141,11 @@
     button.pick.on { background: var(--g); border-color: var(--g); color: #fff; }
     .src-box { background: var(--g-soft); border-radius: 10px; padding: 12px 14px; margin-top: 14px; }
     .src-box label.f { margin-top: 0; }
+    .var-box { background: var(--gold-soft); border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; font-size: 14px; }
+    .notes-preview { margin: 4px 0 0; padding: 10px 14px 10px 32px; background: var(--g-soft); border-radius: 10px; font-size: 14px; }
+    .notes-preview li { margin-bottom: 4px; }
+    .notes-preview mark { background: #fff1c9; color: inherit; border-radius: 3px; padding: 0 2px; }
+    .var-miss { color: var(--err); font-weight: 600; }
     .hidden { display: none !important; }
     .modal-bg {
       position: fixed; inset: 0; background: rgba(20, 30, 25, .45); display: flex;
@@ -329,9 +334,19 @@
         <div class="hint">例：115年9月份兼代課暨輔導課鐘點核對單</div>
         <div class="grid2">
           <div>
+            <label class="f" for="cStart">開始日期</label>
+            <input type="text" id="cStart" placeholder="例：4/27">
+            <div class="hint" id="cStartHint"></div>
+          </div>
+          <div>
+            <label class="f" for="cEnd">結束日期</label>
+            <input type="text" id="cEnd" placeholder="例：5/29">
+            <div class="hint" id="cEndHint"></div>
+          </div>
+          <div>
             <label class="f" for="cPeriod">結算期間</label>
             <input type="text" id="cPeriod">
-            <div class="hint">例：4/27 ~ 5/29（共5週）。換新的一期一定要改，系統靠它分辨哪些人本期寄過了。</div>
+            <div class="hint">填好開始、結束日期會自動產生，也可以自己改。換新的一期一定要改，系統靠它分辨哪些人本期寄過了。</div>
           </div>
           <div>
             <label class="f" for="cSendDate">寄發日期</label>
@@ -339,8 +354,20 @@
           </div>
         </div>
         <label class="f">注意事項 <span class="muted">（每一項顯示成一點）</span></label>
+        <div class="var-box">
+          點一下就能把日期代號插入注意事項，每月只要改上面的日期，注意事項裡的日期會自動更新：
+          <div class="chips" id="varChips" style="margin-top:6px">
+            <button type="button" class="chip" data-var="{開始}">{開始}</button>
+            <button type="button" class="chip" data-var="{結束}">{結束}</button>
+            <button type="button" class="chip" data-var="{週數}">{週數}</button>
+            <button type="button" class="chip" data-var="{期間}">{期間}</button>
+          </div>
+          <div class="hint">例：本次兼、代課鐘點結算自{開始}至{結束}為止，共{週數}週。</div>
+        </div>
         <div class="notes-list" id="notesList"></div>
         <button class="btn ghost sm" id="addNoteBtn">＋ 新增一項</button>
+        <label class="f">老師看到的注意事項</label>
+        <ul class="notes-preview" id="notesPreview"></ul>
       </div>
 
       <div class="card">
@@ -1015,6 +1042,9 @@
       var c = S.config;
       $('cTitle').value = c.title;
       $('cPeriod').value = c.period;
+      $('cStart').value = ymdToText(c.startDate);
+      $('cEnd').value = ymdToText(c.endDate);
+      autoPeriod = makePeriod(getDates());
       $('cSendDate').value = c.sendDate;
       $('cSender').value = c.senderName;
       $('cReplyTo').value = c.replyTo;
@@ -1026,6 +1056,7 @@
       $('itemsList').textContent = '';
       S.items.forEach(addItem);
       renderItemsPreview();
+      onDatesChange();
       $('adminsText').value = S.admins.join('\n');
     }
 
@@ -1034,10 +1065,90 @@
       row.className = 'note-row';
       row.innerHTML = '<textarea rows="2"></textarea><button class="btn danger sm" title="刪除">✕</button>';
       row.querySelector('textarea').value = text || '';
-      row.querySelector('button').onclick = function () { row.remove(); };
+      row.querySelector('textarea').oninput = renderNotesPreview;
+      row.querySelector('textarea').onfocus = function () { lastNote = this; };
+      row.querySelector('button').onclick = function () { row.remove(); renderNotesPreview(); };
       $('notesList').appendChild(row);
     }
-    $('addNoteBtn').onclick = function () { addNote(''); };
+    $('addNoteBtn').onclick = function () { addNote(''); renderNotesPreview(); };
+
+    /* 結算日期：輸入 4/27 這種格式，自動算星期、週數，並帶入注意事項的 {開始}{結束}{週數}{期間} */
+    var WD = '日一二三四五六', autoPeriod = '', lastNote = null;
+    function parseDay(t) {
+      t = String(t || '').trim();
+      var m = /^(\d{4})\s*[\/\-.年]\s*(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})/.exec(t);
+      if (m) { var d0 = new Date(+m[1], m[2] - 1, +m[3]); return d0.getMonth() === m[2] - 1 ? d0 : null; }
+      m = /^(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})/.exec(t);
+      if (!m) return null;
+      /* 沒寫年份：取「已經過了、或兩個月內就會到」的最近那一天（核對單都是期間結束後才寄） */
+      var now = new Date(), limit = new Date(now.getFullYear(), now.getMonth() + 2, now.getDate()), best = null;
+      [-1, 0, 1].forEach(function (k) {
+        var d = new Date(now.getFullYear() + k, m[1] - 1, +m[2]);
+        if (d.getMonth() !== m[1] - 1 || d > limit) return;
+        if (!best || d > best) best = d;
+      });
+      return best;
+    }
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+    function toYmd(d) { return d ? d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) : ''; }
+    function ymdToText(v) { var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(v || ''); return m ? m[1] + '/' + (+m[2]) + '/' + (+m[3]) : (v || ''); }
+    function md(d) { return (d.getMonth() + 1) + '/' + d.getDate() + '（' + WD.charAt(d.getDay()) + '）'; }
+    function weekCount(s, e) {
+      var mon = new Date(s.getFullYear(), s.getMonth(), s.getDate() - ((s.getDay() + 6) % 7));
+      return Math.floor(Math.round((e - mon) / 86400000) / 7) + 1;
+    }
+    function getDates() {
+      var s = parseDay($('cStart').value), e = parseDay($('cEnd').value);
+      if (s && e && e < s) e = new Date(e.getFullYear() + 1, e.getMonth(), e.getDate());
+      return { s: s, e: e };
+    }
+    function makePeriod(d) {
+      return d.s && d.e ? (d.s.getMonth() + 1) + '/' + d.s.getDate() + ' ~ ' + (d.e.getMonth() + 1) + '/' + d.e.getDate() + '（共' + weekCount(d.s, d.e) + '週）' : '';
+    }
+    function periodVars() {
+      var d = getDates();
+      return { '開始': d.s ? md(d.s) : '', '結束': d.e ? md(d.e) : '',
+        '週數': d.s && d.e ? String(weekCount(d.s, d.e)) : '', '期間': $('cPeriod').value.trim() };
+    }
+    function dateHint(id, d) {
+      var t = $(id).value.trim();
+      $(id + 'Hint').textContent = !t ? '' : d ? '→ ' + d.getFullYear() + '年 ' + md(d) : '看不懂這個日期，請用 4/27 這種格式';
+      $(id + 'Hint').style.color = t && !d ? 'var(--err)' : '';
+    }
+    function onDatesChange() {
+      var d = getDates();
+      dateHint('cStart', d.s);
+      dateHint('cEnd', d.e);
+      var p = makePeriod(d);
+      if (p && (!$('cPeriod').value.trim() || $('cPeriod').value === autoPeriod)) $('cPeriod').value = p;
+      if (p) autoPeriod = p;
+      renderNotesPreview();
+    }
+    function renderNotesPreview() {
+      var v = periodVars();
+      var notes = Array.prototype.map.call(document.querySelectorAll('#notesList textarea'), function (t) { return t.value.trim(); })
+        .filter(function (x) { return x; });
+      $('notesPreview').innerHTML = notes.map(function (n) {
+        return '<li>' + esc(n).replace(/\{(開始|結束|週數|期間)\}/g, function (m, k) {
+          return v[k] ? '<mark>' + esc(v[k]) + '</mark>' : '<span class="var-miss">' + m + '（還沒填日期）</span>';
+        }).replace(/\n/g, '<br>') + '</li>';
+      }).join('') || '<li class="muted">（沒有注意事項）</li>';
+    }
+    $('cStart').oninput = onDatesChange;
+    $('cEnd').oninput = onDatesChange;
+    $('cPeriod').oninput = renderNotesPreview;
+    $('varChips').onclick = function (e) {
+      var b = e.target.closest('button[data-var]');
+      if (!b) return;
+      var boxes = document.querySelectorAll('#notesList textarea');
+      var t = lastNote && document.body.contains(lastNote) ? lastNote : boxes[boxes.length - 1];
+      if (!t) { addNote(''); t = document.querySelector('#notesList textarea'); }
+      var pos = typeof t.selectionStart === 'number' ? t.selectionStart : t.value.length;
+      t.value = t.value.slice(0, pos) + b.getAttribute('data-var') + t.value.slice(t.selectionEnd || pos);
+      t.focus();
+      t.selectionStart = t.selectionEnd = pos + b.getAttribute('data-var').length;
+      renderNotesPreview();
+    };
 
     $('todayBtn').onclick = function () {
       var d = new Date();
@@ -1047,7 +1158,15 @@
     $('saveConfigBtn').onclick = function () {
       var notes = Array.prototype.map.call(document.querySelectorAll('#notesList textarea'), function (t) { return t.value.trim(); })
         .filter(function (v) { return v; });
+      var dates = getDates();
+      if ($('cStart').value.trim() && !dates.s) { toast('開始日期看不懂，請用 4/27 這種格式', true); return; }
+      if ($('cEnd').value.trim() && !dates.e) { toast('結束日期看不懂，請用 5/29 這種格式', true); return; }
+      var v = periodVars();
+      var missing = notes.join(' ').match(/\{(開始|結束|週數|期間)\}/g) || [];
+      missing = missing.filter(function (m) { return !v[m.slice(1, -1)]; });
+      if (missing.length) { toast('注意事項用到 ' + missing[0] + '，請先填好開始、結束日期', true); return; }
       var data = {
+        startDate: toYmd(dates.s), endDate: toYmd(dates.e),
         title: $('cTitle').value, period: $('cPeriod').value, sendDate: $('cSendDate').value,
         senderName: $('cSender').value, replyTo: $('cReplyTo').value, fallbackEmail: $('cFallback').value,
         queryUrl: $('cUrl').value, notes: notes
