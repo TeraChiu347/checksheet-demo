@@ -267,7 +267,7 @@
     <!-- 匯入資料 -->
     <section class="tab" id="tab-import">
       <div class="card">
-        <h2>匯入本期時數 <small>會取代目前的「當月總計」，舊資料自動備份</small></h2>
+        <h2>匯入到「<span id="importFormName"></span>」 <small>只會取代這張核對單的資料，其他核對單不受影響；舊資料自動備份</small></h2>
         <p class="muted" style="margin-top:0">可以上傳 CSV 檔，或直接從 Excel 選取儲存格複製、貼到下面。第一列要是標題，支援兩種格式：</p>
         <div class="grid2">
           <div>
@@ -544,6 +544,7 @@
         $('hPeriod').textContent = data.form.name + '・' + (data.config.period ? '本期：' + data.config.period : '尚未設定結算期間');
         renderFormBar();
         renderFormList();
+        $('importFormName').textContent = data.form.name;
         renderOverview();
         renderSettings();
         renderFormats();
@@ -1053,7 +1054,7 @@
         }).join('') + '</table></div>';
 
       h += sum.count
-        ? '<div class="row"><button class="btn gold" id="importGoBtn">確認匯入 ' + sum.count + ' 位老師</button>' +
+        ? '<div class="row"><button class="btn gold" id="importGoBtn">匯入到「' + esc(S.form.name) + '」：' + sum.count + ' 位老師</button>' +
           '<span class="muted">會取代目前的「當月總計」（原本表上的其他欄位與公式不會保留），舊的會自動備份成新工作表（保留最近 3 份）。</span></div>'
         : '<div class="banner err">沒有可匯入的資料。</div>';
       box.innerHTML = h;
@@ -1061,7 +1062,7 @@
     }
 
     function doImport() {
-      confirmBox('確認匯入', '匯入後「當月總計」會換成這次的資料。\n舊資料會先自動備份。', '匯入', 'gold').then(function (ok) {
+      confirmBox('確認匯入', '要匯入到「' + S.form.name + '」這張核對單。\n\n這張核對單原本的資料會換成這次的資料（舊資料自動備份），其他核對單不受影響。', '匯入到「' + S.form.name + '」', 'gold').then(function (ok) {
         if (!ok) return;
         $('importGoBtn').disabled = true;
         return call('importData', FORM, pendingImport).then(function (res) {
