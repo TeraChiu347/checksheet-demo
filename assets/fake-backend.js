@@ -62,6 +62,26 @@
     S.records.push({ name: n, hours: h });
   });
 
+  // ───────── 多張核對單：每張各自的設定、項目、資料；寄件人等共用設定以主核對單為準 ─────────
+  var MAIN = '兼代課鐘點';
+  var GLOBAL_KEYS = ['senderName', 'replyTo', 'fallbackEmail', 'queryUrl'];
+  var FORMS = [{ id: MAIN, name: MAIN, main: true, config: S.config, items: S.items, records: S.records }];
+  FORMS.push({
+    id: '本土語教支人員', name: '本土語教支人員', main: false,
+    config: { title: '本土語教支人員鐘點費核對單', period: '9月', startDate: '', endDate: '', sendDate: '2026年10月2日',
+      notes: ['交通費依實際出勤天數核發。'] },
+    items: [{ header: '鐘點費', label: '鐘點', unit: '節', group: '' }, { header: '交通費', label: '交通費', unit: '元', group: '' }],
+    records: NAMES.slice(0, 6).map(function (n, i) { return { name: n, hours: { '鐘點費': 4 + i, '交通費': i % 2 ? 300 : 150 } }; })
+  });
+  var CUR = FORMS[0];
+  function use(id) {
+    var f = FORMS.filter(function (x) { return x.id === id; })[0] || FORMS[0];
+    GLOBAL_KEYS.forEach(function (k) { f.config[k] = FORMS[0].config[k]; });
+    CUR = f; S.config = f.config; S.items = f.items; S.records = f.records;
+    return f;
+  }
+  function formsList() { return FORMS.map(function (f) { return { id: f.id, name: f.name, main: f.main }; }); }
+
   // ───────── 小工具 ─────────
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function now() { var d = new Date(); return d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
@@ -94,7 +114,7 @@
   }
   function status() {
     var map = {};
-    S.mailLog.forEach(function (row) { if (row[1] === S.config.period) map[row[2]] = { result: row[5], time: row[7] }; });
+    S.mailLog.forEach(function (row) { if (row[8] === CUR.name && row[1] === S.config.period) map[row[2]] = { result: row[5], time: row[7] }; });
     return map;
   }
   function act(action, detail) { S.actionLog.push([now(), ME, action, detail]); }
@@ -167,7 +187,7 @@
     return '成功';
   }
   function logMail(r, result) {
-    S.mailLog.push([now(), S.config.period, r.name, r.sendTo, r.registered ? '是' : '否（代收）', result, ME, short()]);
+    S.mailLog.push([now(), S.config.period, r.name, r.sendTo, r.registered ? '是' : '否（代收）', result, ME, short(), CUR.name]);
   }
 
   // ───────── 匯入 ─────────
@@ -263,7 +283,8 @@
         seen[h] = true;
         return { header: h, label: trim(it.label) || h, unit: trim(it.unit), group: trim(it.group) };
       });
-      act('修改核對項目', S.items.map(function (it) { return it.header; }).join('、'));
+      CUR.items = S.items;
+      act('修改核對項目', CUR.name + '：' + S.items.map(function (it) { return it.header; }).join('、'));
       return true;
     },
     saveAdmins: function (list) {
@@ -361,33 +382,89 @@
       var p = parseImport(rows);
       if (!p.teachers.length) throw new Error('沒有可匯入的老師資料');
       p.teachers.forEach(function (x) { if (x.email && !teacherEmail(x.name)) S.teachers.push({ name: x.name, email: x.email }); });
-      S.records = p.teachers.map(function (x) { return { name: x.name, hours: x.hours }; });
+      S.records = CUR.records = p.teachers.map(function (x) { return { name: x.name, hours: x.hours }; });
       var backup = '當月總計_備份_' + now().replace(/\D/g, '');
       act('匯入當月總計', p.teachers.length + ' 位，舊資料備份到「' + backup + '」');
       return { count: p.teachers.length, backup: backup };
     },
     getLogs: function () {
       return {
-        mail: S.mailLog.slice().reverse().map(function (r) { return r.slice(0, 7); }),
+        mail: S.mailLog.slice().reverse().map(function (r) { return [r[0], r[8]].concat(r.slice(1, 7)); }),
         query: S.queryLog.slice().reverse(),
         action: S.actionLog.slice().reverse()
       };
     },
-    getPageInfo: function () { return { title: S.config.title, period: S.config.period, contact: S.config.senderName }; },
+    getPageInfo: function () {
+      use(MAIN);
+      return FORMS.length > 1 ? { title: '鐘點費核對單查詢', period: '', contact: S.config.senderName }
+        : { title: S.config.title, period: S.config.period, contact: S.config.senderName };
+    },
     queryHours: function (name, email) {
       name = normName(name); email = normEmail(email);
       if (!name || !email) return { ok: false, msg: '請輸入姓名與電子信箱。' };
-      var r = null;
-      try { r = find(name); } catch (e) { r = null; }
-      if (!r || !r.registered || r.email !== email) {
+      // 每張核對單各找一次；任一張姓名＋信箱對上就算驗證成功
+      var found = [];
+      FORMS.forEach(function (f) {
+        use(f.id);
+        var raw = S.records.filter(function (x) { return x.name === name; })[0];
+        if (!raw) return;
+        var r = view(raw);
+        if (!hasHours(r) || (r.registered && r.email !== email)) return;
+        found.push({ f: f, r: r });
+      });
+      if (!found.some(function (x) { return x.r.registered; })) {
         S.queryLog.push([now(), name, '失敗']);
         return { ok: false, msg: '查無資料：姓名或電子信箱不符，或本月沒有時數紀錄。請輸入收到核對單通知的那個信箱。（試用帳號：王大明／teacher01@example.com）' };
       }
       S.queryLog.push([now(), name, '成功']);
-      return { ok: true, name: name, title: S.config.title, period: S.config.period, sendDate: S.config.sendDate,
-        notes: S.config.notes.map(fillPeriod), tableHtml: table(r.hours) };
+      return { ok: true, name: name, sheets: found.map(function (x) {
+        use(x.f.id);
+        return { form: x.f.name, title: S.config.title, period: S.config.period, sendDate: S.config.sendDate,
+          notes: S.config.notes.map(fillPeriod), tableHtml: table(x.r.hours) };
+      }) };
     },
-    mailHtml: function (name) { return mailHtml(find(name)); }
+    mailHtml: function (name) { use(MAIN); return mailHtml(find(name)); },
+    createForm: function (spec) {
+      var name = trim(spec && spec.name);
+      if (!name) throw new Error('請輸入核對單名稱');
+      if (/[\\\/?*\[\]:｜]/.test(name) || name.length > 30) throw new Error('名稱不能有 \\ / ? * [ ] : ｜ 這些符號，最多 30 個字');
+      if (FORMS.some(function (f) { return f.id === name; })) throw new Error('已經有叫「' + name + '」的核對單了');
+      var items = (spec.items && spec.items.length ? spec.items : [{ header: '時數', label: '時數', unit: '節' }]).map(function (it) {
+        return { header: trim(it.header), label: trim(it.label) || trim(it.header), unit: trim(it.unit), group: trim(it.group) };
+      });
+      FORMS.push({ id: name, name: name, main: false, items: items, records: [],
+        config: { title: trim(spec.title) || name + '核對單', period: '', startDate: '', endDate: '', sendDate: '', notes: [] } });
+      act('新增核對單', name);
+      return { id: name, name: name, main: false };
+    },
+    removeForm: function (id) {
+      if (id === MAIN) throw new Error('主核對單不能移除');
+      FORMS = FORMS.filter(function (f) { return f.id !== id; });
+      act('移除核對單', id + '（工作表保留）');
+      return true;
+    }
+  };
+
+  // 每張核對單各自的操作：第一個參數是核對單 id
+  ['adminInit', 'saveConfig', 'saveItems', 'previewMail', 'sendTestToMe', 'sendToTeacher', 'sendBatchChunk', 'previewImport', 'importData']
+    .forEach(function (k) {
+      var fn = API[k];
+      API[k] = function (formId) { use(formId); return fn.apply(null, Array.prototype.slice.call(arguments, 1)); };
+    });
+  var adminInitOne = API.adminInit;
+  API.adminInit = function (formId) {
+    var r = adminInitOne(formId);
+    r.forms = formsList();
+    r.form = { id: CUR.id, name: CUR.name, main: CUR.main };
+    r.hasTotal = CUR.records.length > 0;
+    return r;
+  };
+  // 共用設定（寄件人、代收信箱…）存回主核對單
+  var saveConfigOne = API.saveConfig;
+  API.saveConfig = function (formId, d) {
+    var r = saveConfigOne(formId, d);
+    GLOBAL_KEYS.forEach(function (k) { FORMS[0].config[k] = CUR.config[k]; });
+    return r;
   };
 
   // 模擬 google.script.run：非同步呼叫、成功／失敗回呼

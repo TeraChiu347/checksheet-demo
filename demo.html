@@ -146,6 +146,14 @@
     .notes-preview li { margin-bottom: 4px; }
     .notes-preview mark { background: #fff1c9; color: inherit; border-radius: 3px; padding: 0 2px; }
     .var-miss { color: var(--err); font-weight: 600; }
+    .form-bar { background: var(--gold-soft); border-bottom: 1px solid #e6d6b0; padding: 10px 20px; }
+    .form-bar-in { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+    .fb-label { font-size: 13px; font-weight: 700; color: var(--warn); letter-spacing: .05em; }
+    .form-bar .chip { font-size: 14px; padding: 5px 14px; }
+    .tpl-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .form-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .form-row:last-child { border-bottom: 0; }
+    .form-row .grow { min-width: 0; }
     .hidden { display: none !important; }
     .modal-bg {
       position: fixed; inset: 0; background: rgba(20, 30, 25, .45); display: flex;
@@ -212,6 +220,13 @@
       <button data-tab="settings">設定</button>
     </nav>
   </header>
+  <div class="form-bar">
+    <div class="form-bar-in">
+      <span class="fb-label">核對單</span>
+      <div class="chips" id="formChips"></div>
+      <button class="btn ghost sm" id="addFormBtn">＋ 新增核對單</button>
+    </div>
+  </div>
 
   <main>
     <div id="loading" class="loading">載入中…</div>
@@ -328,7 +343,7 @@
     <!-- 設定 -->
     <section class="tab" id="tab-settings">
       <div class="card">
-        <h2>本期資訊</h2>
+        <h2>本期資訊 <small>只套用在目前這張核對單</small></h2>
         <label class="f" for="cTitle">標題</label>
         <input type="text" id="cTitle">
         <div class="hint">例：115年9月份兼代課暨輔導課鐘點核對單</div>
@@ -371,7 +386,7 @@
       </div>
 
       <div class="card">
-        <h2>寄信設定</h2>
+        <h2>寄信設定 <small>所有核對單共用</small></h2>
         <div class="grid2">
           <div>
             <label class="f" for="cSender">寄件人名稱</label>
@@ -398,7 +413,7 @@
       </div>
 
       <div class="card">
-        <h2>核對項目 <small>核對單表格要顯示哪些欄位</small></h2>
+        <h2>核對項目 <small>目前這張核對單的表格要顯示哪些欄位</small></h2>
         <p class="muted" style="margin-top:0">「欄位標題」要和當月總計（或 CSV）的欄名一模一樣。「合併表頭」相同且排在一起的項目，表頭會合併成一格。顯示名稱可按 Enter 換行。</p>
         <div class="item-row item-head"><div>欄位標題</div><div>顯示名稱</div><div>單位</div><div>合併表頭</div><div></div></div>
         <div id="itemsList"></div>
@@ -409,6 +424,13 @@
         </div>
         <label class="f">表格預覽</label>
         <div id="itemsPreview"></div>
+      </div>
+
+      <div class="card">
+        <h2>核對單管理 <small>不同費用在不同時間發，可以各建一張</small></h2>
+        <div id="formList"></div>
+        <div class="row" style="margin-top:12px"><button class="btn ghost" id="addFormBtn2">＋ 新增核對單</button></div>
+        <div class="hint">移除只是從清單拿掉，試算表裡那張核對單的工作表和資料都會保留。</div>
       </div>
 
       <div class="card">
@@ -432,6 +454,9 @@
   <script src="assets/fake-backend.js"></script>
   <script>
     var S = null;
+    var FORM = '';
+    try { FORM = localStorage.getItem('checksheet_form') || ''; } catch (e) { /* 無痕模式等情況忽略 */ }
+    var sending = false;
     var filter = 'all';
     var logKind = 'mail';
     var logs = null;
@@ -510,11 +535,15 @@
 
     /* ───────── 載入 ───────── */
     function load() {
-      return call('adminInit').then(function (data) {
+      return call('adminInit', FORM).then(function (data) {
         S = data;
+        FORM = data.form.id;
+        try { localStorage.setItem('checksheet_form', FORM); } catch (e) { /* 忽略 */ }
         $('loading').classList.add('hidden');
         $('hMe').textContent = data.me;
-        $('hPeriod').textContent = data.config.period ? '本期：' + data.config.period : '尚未設定結算期間';
+        $('hPeriod').textContent = data.form.name + '・' + (data.config.period ? '本期：' + data.config.period : '尚未設定結算期間');
+        renderFormBar();
+        renderFormList();
         renderOverview();
         renderSettings();
         renderFormats();
@@ -522,6 +551,106 @@
         $('loading').textContent = '載入失敗：' + errMsg(e);
       });
     }
+
+    /* ───────── 多張核對單 ───────── */
+    var TEMPLATES = [
+      { name: '直播共學教師鐘點費', items: [{ header: '鐘點', label: '鐘點', unit: '節' }] },
+      { name: '暑寒輔', items: [{ header: '輔導課鐘點', label: '輔導課時數', unit: '節' }] },
+      { name: '本土語教支人員', items: [{ header: '鐘點費', label: '鐘點', unit: '節' }, { header: '交通費', label: '交通費', unit: '元' }] },
+      { name: '學習扶助', items: [{ header: '鐘點', label: '鐘點', unit: '節' }] },
+      { name: '', label: '空白', items: [{ header: '時數', label: '時數', unit: '節' }] }
+    ];
+
+    function renderFormBar() {
+      $('formChips').innerHTML = S.forms.map(function (f) {
+        return '<button type="button" class="chip' + (f.id === FORM ? ' on' : '') + '" data-form="' + esc(f.id) + '">' + esc(f.name) + '</button>';
+      }).join('');
+    }
+    function renderFormList() {
+      $('formList').innerHTML = S.forms.map(function (f) {
+        return '<div class="form-row"><div class="grow"><b>' + esc(f.name) + '</b>' +
+          (f.main ? ' <span class="pill wait">主核對單</span>' : '') +
+          '<div class="hint">工作表：' + (f.main ? '當月總計、網頁設定、核對項目' : '當月總計｜' + esc(f.name) + ' 等') + '</div></div>' +
+          '<button class="btn ghost sm" data-go="' + esc(f.id) + '">切換到這張</button>' +
+          (f.main ? '' : ' <button class="btn danger sm" data-rm="' + esc(f.id) + '">移除</button>') + '</div>';
+      }).join('');
+    }
+    function switchForm(id) {
+      if (id === FORM) return;
+      if (sending) { toast('寄送中，請等寄完或按「暫停」再切換', true); return; }
+      FORM = id;
+      filter = 'all';
+      pendingImport = null;
+      $('importResult').classList.add('hidden');
+      Array.prototype.forEach.call($('srcSheets').querySelectorAll('.chip'), function (c) { c.classList.remove('on'); });
+      $('progressBox').classList.add('hidden');
+      toast('切換到「' + id + '」');
+      load();
+    }
+    $('formChips').onclick = function (e) {
+      var b = e.target.closest('button[data-form]');
+      if (b) switchForm(b.getAttribute('data-form'));
+    };
+    $('formList').onclick = function (e) {
+      var go = e.target.closest('button[data-go]');
+      if (go) { switchForm(go.getAttribute('data-go')); window.scrollTo(0, 0); return; }
+      var rm = e.target.closest('button[data-rm]');
+      if (!rm) return;
+      var id = rm.getAttribute('data-rm');
+      confirmBox('移除核對單', '要把「' + id + '」從清單移除嗎？\n試算表裡它的工作表和資料都會保留，之後要恢復，把名稱加回「核對單清單」工作表就好。', '移除', 'danger')
+        .then(function (ok) {
+          if (!ok) return;
+          return call('removeForm', id).then(function () {
+            toast('已移除「' + id + '」');
+            if (FORM === id) FORM = '';
+            return load();
+          });
+        }).catch(function (err) { toast(errMsg(err), true); });
+    };
+
+    function openAddForm() {
+      if (sending) { toast('寄送中，請等寄完再新增', true); return; }
+      var picked = TEMPLATES[0];
+      var body = '<label class="f">從常用的開始</label><div class="tpl-list" id="tplList">' +
+        TEMPLATES.map(function (t, i) {
+          return '<button type="button" class="chip' + (i === 0 ? ' on' : '') + '" data-tpl="' + i + '">' + esc(t.label || t.name) + '</button>';
+        }).join('') + '</div>' +
+        '<label class="f" for="nfName">核對單名稱</label><input type="text" id="nfName" maxlength="30">' +
+        '<div class="hint">顯示在後台上方的切換按鈕。不能有 \\ / ? * [ ] : ｜ 這些符號。</div>' +
+        '<label class="f" for="nfTitle">核對單標題</label><input type="text" id="nfTitle">' +
+        '<div class="hint">老師收到的信、查詢頁上顯示的標題，之後可以在「設定」改。</div>' +
+        '<label class="f">核對項目</label><div class="muted" id="nfItems"></div>' +
+        '<div class="hint">建立後可以在「設定 → 核對項目」新增或修改。</div>';
+      var done = modal('新增核對單', body, [
+        { text: '取消', cls: 'ghost', value: null },
+        { text: '建立', value: 'go', check: function () { return $('nfName').value.trim() ? true : (toast('請輸入核對單名稱', true), false); } }
+      ], { html: true, focus: 'nfName' });
+      function fill(t) {
+        picked = t;
+        $('nfName').value = t.name;
+        $('nfTitle').value = t.name ? t.name + '核對單' : '';
+        $('nfItems').textContent = t.items.map(function (it) { return it.label + '（' + it.unit + '）'; }).join('、');
+      }
+      fill(picked);
+      $('nfName').oninput = function () { $('nfTitle').value = this.value.trim() ? this.value.trim() + '核對單' : ''; };
+      $('tplList').onclick = function (e) {
+        var b = e.target.closest('button[data-tpl]');
+        if (!b) return;
+        Array.prototype.forEach.call(this.children, function (c) { c.classList.toggle('on', c === b); });
+        fill(TEMPLATES[+b.getAttribute('data-tpl')]);
+      };
+      done.then(function (v) {
+        if (v !== 'go') return;
+        var spec = { name: $('nfName').value.trim(), title: $('nfTitle').value.trim(), items: picked.items };
+        return call('createForm', spec).then(function (f) {
+          FORM = f.id;
+          toast('已建立「' + f.name + '」，請確認核對項目與注意事項');
+          return load().then(function () { showTab('settings'); });
+        });
+      }).catch(function (e) { toast(errMsg(e), true); });
+    }
+    $('addFormBtn').onclick = openAddForm;
+    $('addFormBtn2').onclick = openAddForm;
 
     function itemName(it) { return (it.group ? it.group + '－' : '') + it.label.replace(/\n/g, ''); }
     function itemHead(it) {
@@ -646,7 +775,7 @@
 
     function openPreview(name) {
       toast('產生預覽中…');
-      call('previewMail', name).then(function (p) {
+      call('previewMail', FORM, name).then(function (p) {
         var r = findRec(name);
         var info = '<div class="muted" style="margin-bottom:8px">收件人：' + esc(p.to || '（無信箱）') +
           (p.registered ? '' : '（代收）') + '<br>主旨：' + esc(p.subject) + '</div>' +
@@ -670,7 +799,7 @@
       go.then(function (ok) {
         if (!ok) return;
         toast('寄送中…');
-        return call('sendToTeacher', name).then(function (res) {
+        return call('sendToTeacher', FORM, name).then(function (res) {
           toast(res === '成功' ? '已寄出給 ' + name + ' 老師' : res, res !== '成功');
           return load();
         });
@@ -702,7 +831,7 @@
     /* 測試信：不用原生下拉選單（在 Google 網頁框架裡會點錯位），改成搜尋＋點選 */
     function sendTest(name) {
       toast('寄送中…');
-      return call('sendTestToMe', name).then(function (to) {
+      return call('sendTestToMe', FORM, name).then(function (to) {
         toast('已寄出「' + name + '」的測試信到 ' + to);
       }).catch(function (e) { toast(errMsg(e), true); });
     }
@@ -761,6 +890,7 @@
     function runBatch() {
       var total = S.count.pending, ok = 0, fail = 0;
       pauseFlag = false;
+      sending = true;
       $('progressBox').classList.remove('hidden');
       $('batchBtn').disabled = true;
       $('pauseBtn').disabled = false;
@@ -772,12 +902,13 @@
       }
       function finish(msg) {
         update(msg);
+        sending = false;
         $('pauseBtn').disabled = true;
         load();
       }
       function step() {
         if (pauseFlag) { finish('已暫停：成功 ' + ok + ' 封' + (fail ? '、失敗 ' + fail + ' 封' : '') + '。再按「批次寄送」會接著寄。'); return; }
-        call('sendBatchChunk').then(function (r) {
+        call('sendBatchChunk', FORM).then(function (r) {
           ok += r.ok; fail += r.fail;
           update();
           if (r.stopReason && r.stopReason !== '時間到') {
@@ -875,7 +1006,7 @@
       call('readSheetRows', name).then(function (rows) {
         if (rows.length < 2) throw new Error('「' + name + '」沒有資料');
         pendingImport = rows;
-        return call('previewImport', rows).then(function (sum) {
+        return call('previewImport', FORM, rows).then(function (sum) {
           sum.source = '工作表「' + name + '」，共 ' + (rows.length - 1) + ' 列';
           renderImportResult(sum);
           $('importResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -891,7 +1022,7 @@
       if (rows.length < 2) { toast('請先上傳檔案或貼上資料（第一列是標題）', true); return; }
       pendingImport = rows;
       $('importCheckBtn').disabled = true;
-      call('previewImport', rows).then(function (sum) {
+      call('previewImport', FORM, rows).then(function (sum) {
         renderImportResult(sum);
       }).catch(function (e) {
         $('importResult').classList.remove('hidden');
@@ -933,7 +1064,7 @@
       confirmBox('確認匯入', '匯入後「當月總計」會換成這次的資料。\n舊資料會先自動備份。', '匯入', 'gold').then(function (ok) {
         if (!ok) return;
         $('importGoBtn').disabled = true;
-        return call('importData', pendingImport).then(function (res) {
+        return call('importData', FORM, pendingImport).then(function (res) {
           $('importResult').innerHTML = '<h2>匯入完成</h2><p>已匯入 ' + res.count + ' 位老師。' +
             (res.backup ? '舊資料備份在工作表「' + esc(res.backup) + '」。' : '') + '</p>' +
             '<div class="banner">別忘了到「設定」更新<b>結算期間</b>和<b>寄發日期</b>，再寄送。</div>' +
@@ -1012,7 +1143,7 @@
     function renderLogs() {
       if (!logs) return;
       var heads = {
-        mail: ['時間', '結算期間', '姓名', '寄送信箱', '登錄信箱', '結果', '操作者'],
+        mail: ['時間', '核對單', '結算期間', '姓名', '寄送信箱', '登錄信箱', '結果', '操作者'],
         query: ['時間', '姓名', '結果'],
         action: ['時間', '操作者', '動作', '內容']
       }[logKind];
@@ -1173,7 +1304,7 @@
       };
       var periodChanged = S.config.period && data.period.trim() !== S.config.period;
       $('saveConfigBtn').disabled = true;
-      call('saveConfig', data).then(function () {
+      call('saveConfig', FORM, data).then(function () {
         toast(periodChanged ? '已儲存。結算期間已更換，本期寄送狀態重新計算。' : '已儲存');
         return load();
       }).catch(function (e) { toast(errMsg(e), true); })
@@ -1236,7 +1367,7 @@
       if (!items.length) { toast('至少要有一個項目', true); return; }
       confirmBox('儲存核對項目', '欄位標題要和「當月總計」的欄名一致，不然那一欄會全部顯示 0。\n確定儲存？', '儲存').then(function (ok) {
         if (!ok) return;
-        return call('saveItems', items).then(function () { toast('已儲存核對項目'); return load(); });
+        return call('saveItems', FORM, items).then(function () { toast('已儲存核對項目'); return load(); });
       }).catch(function (e) { toast(errMsg(e), true); });
     };
 
